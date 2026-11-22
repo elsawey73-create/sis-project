@@ -1,122 +1,92 @@
-import { useState } from 'react'
-import heroImg from './assets/hero.png'
-import reactLogo from './assets/react.svg'
-import viteLogo from './assets/vite.svg'
-import './App.css'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { LanguageProvider, useLanguage } from './context/LanguageContext';
+import { AuthProvider, useAuth, homeByRole } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute';
+import Layout from './components/Layout';
+import Login from './pages/Login';
+import StudentHome from './pages/student/StudentHome';
+import Registration from './pages/student/Registration';
+import Schedule from './pages/student/Schedule';
+import Grades from './pages/student/Grades';
+import Transcript from './pages/student/Transcript';
+import Attendance from './pages/student/Attendance';
+import Attend from './pages/student/Attend';
+import DoctorHome from './pages/doctor/DoctorHome';
+import OfferingRoster from './pages/doctor/OfferingRoster';
+import AttendanceSession from './pages/doctor/AttendanceSession';
+import AdminHome from './pages/admin/AdminHome';
+import AdminCatalog from './pages/admin/AdminCatalog';
+import AdminOfferings from './pages/admin/AdminOfferings';
+import AdminUsers from './pages/admin/AdminUsers';
+import Catalog from './pages/shared/Catalog';
+import Messages from './pages/shared/Messages';
+import Notifications from './pages/shared/Notifications';
 
-function App() {
-  const [count, setCount] = useState(0)
-
-  return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
-          <h1>Get started</h1>
-          <p>
-            Edit <code>src/App.jsx</code> and save to test <code>HMR</code>
-          </p>
-        </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
-          Count is {count}
-        </button>
-      </section>
-
-      <div className="ticks"></div>
-
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
-          <h2>Documentation</h2>
-          <p>Your questions, answered</p>
-          <ul>
-            <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
-                Explore Vite
-              </a>
-            </li>
-            <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
-                Learn more
-              </a>
-            </li>
-          </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
-          <h2>Connect with us</h2>
-          <p>Join the Vite community</p>
-          <ul>
-            <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
-                GitHub
-              </a>
-            </li>
-            <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
-                Discord
-              </a>
-            </li>
-            <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
-                X.com
-              </a>
-            </li>
-            <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
-                Bluesky
-              </a>
-            </li>
-          </ul>
-        </div>
-      </section>
-
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
-  )
+// "/" يوجّه كل واحد لصفحته حسب دوره
+function RootRedirect() {
+  const { user, loading } = useAuth();
+  const { t } = useLanguage();
+  if (loading) return <div className="center">{t('common.loading')}</div>;
+  return <Navigate to={user ? homeByRole[user.role] : '/login'} replace />;
 }
 
-export default App
+export default function App() {
+  return (
+    <LanguageProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<RootRedirect />} />
+            <Route path="/login" element={<Login />} />
+
+            {/* أي مستخدم مسجّل */}
+            <Route element={<ProtectedRoute />}>
+              <Route element={<Layout />}>
+                <Route path="/catalog" element={<Catalog />} />
+                <Route path="/notifications" element={<Notifications />} />
+              </Route>
+            </Route>
+
+            <Route element={<ProtectedRoute roles={['student', 'instructor']} />}>
+              <Route element={<Layout />}>
+                <Route path="/messages" element={<Messages />} />
+                <Route path="/messages/:id" element={<Messages />} />
+              </Route>
+            </Route>
+
+            <Route element={<ProtectedRoute roles={['student']} />}>
+              <Route element={<Layout />}>
+                <Route path="/student" element={<StudentHome />} />
+                <Route path="/student/registration" element={<Registration />} />
+                <Route path="/student/schedule" element={<Schedule />} />
+                <Route path="/student/grades" element={<Grades />} />
+                <Route path="/student/transcript" element={<Transcript />} />
+                <Route path="/student/attendance" element={<Attendance />} />
+                <Route path="/attend" element={<Attend />} />
+              </Route>
+            </Route>
+
+            <Route element={<ProtectedRoute roles={['instructor']} />}>
+              <Route element={<Layout />}>
+                <Route path="/doctor" element={<DoctorHome />} />
+                <Route path="/doctor/offerings/:id" element={<OfferingRoster />} />
+                <Route path="/doctor/attendance/:id" element={<AttendanceSession />} />
+              </Route>
+            </Route>
+
+            <Route element={<ProtectedRoute roles={['admin']} />}>
+              <Route element={<Layout />}>
+                <Route path="/admin" element={<AdminHome />} />
+                <Route path="/admin/catalog" element={<AdminCatalog />} />
+                <Route path="/admin/offerings" element={<AdminOfferings />} />
+                <Route path="/admin/users" element={<AdminUsers />} />
+              </Route>
+            </Route>
+
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </LanguageProvider>
+  );
+}

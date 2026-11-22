@@ -5,9 +5,11 @@ const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
   password: process.env.DB_PASSWORD || '',
-  database: process.env.DB_NAME || 'sis_db',
+  database: process.env.DB_NAME || 'unidex_db',
   waitForConnections: true,
   connectionLimit: 10,
+  dateStrings: true,     // التواريخ ترجع نصوص "2026-09-01" بدل Date
+  decimalNumbers: true,  // الأعداد العشرية ترجع أرقام مش نصوص
 });
 
 module.exports = pool;
