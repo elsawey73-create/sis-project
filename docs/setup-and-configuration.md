@@ -59,11 +59,12 @@ No test script exists on the frontend. No `engines` field pins a Node version in
 | `DB_PASSWORD` | same | An explicit empty value is kept. Development uses an empty password only when the variable is unset. Production exits when the variable is unset |
 | `DB_NAME` | same | Development default `unidex_db`. Production exits if this is missing or blank. `migrate.js` allows only letters, numbers, and underscores |
 | `JWT_SECRET` | `authController.js`, `middleware/auth.js`, `server.js` | HMAC secret for user tokens. The process exits on startup if it is missing. In `NODE_ENV=production` it must be at least 32 characters |
-| `CORS_ORIGINS` | `server.js` | Comma-separated browser origins. Empty means every origin, with a startup warning. `NODE_ENV=production` refuses to start when this is empty |
+| `CORS_ORIGINS` | `server.js` | Comma-separated browser origins. Empty means every origin, with a startup warning. `NODE_ENV=production` refuses to start when this is empty. A non-empty list also allows `https://localhost` and `capacitor://localhost` |
 | `NODE_ENV` | `server.js`, `config/env.js`, `seed.js` | `production` turns on the checks above and makes `npm run seed` exit 1 |
 | `PORT` | `server.js` | Listen port. Default `5000` when unset, including in production |
 | `API` | `scripts/smoke.js` | Smoke-test base URL. Default `http://localhost:5000/api` |
-| `VITE_API_URL` | `frontend/src/api/axios.js` | Axios `baseURL` when set. Vite inlines it at build time. Include the `/api` suffix |
+| `VITE_API_URL` | `frontend/src/api/axios.js` | Axios `baseURL` on the website when set. Vite inlines it at build time. Include the `/api` suffix. The Capacitor app does not use it |
+| `VITE_NATIVE_API_URL` | `frontend/src/api/axios.js` | Optional API base for the Capacitor app only. Unset uses the production API. Include the `/api` suffix |
 | `FRONTEND_URL` | `controllers/authController.js` | Origin written into password-reset links. Falls back to the request `Origin`, then a relative path |
 | `RESEND_API_KEY` | `services/mail.js`, `server.js` | Resend API key. Empty logs a warning and skips sending. The process still starts |
 | `RESEND_FROM` | `services/mail.js` | From address. Empty uses `Unidex <onboarding@resend.dev>`, which can deliver only to the Resend account owner's email |

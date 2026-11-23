@@ -35,18 +35,19 @@ Copy `backend/.env.example` to `backend/.env` for a local file, or set the same 
 | `DB_PASSWORD` | Required to be present. An empty value is kept. Development uses an empty password only when the variable is unset |
 | `DB_NAME` | Required, non-empty. Letters, numbers, and underscores only. Development default `unidex_db` |
 | `JWT_SECRET` | Required in every mode. Production also requires at least 32 characters. The example placeholder meets that length; replace it and do not commit the real value |
-| `CORS_ORIGINS` | Required, comma-separated browser origins such as `https://unidex.example.com`. This is the site the browser loads, not the API URL. Spaces around commas are trimmed. An empty value in development allows every origin and prints a warning. Production exits when the list is empty |
+| `CORS_ORIGINS` | Required, comma-separated browser origins such as `https://unidex.example.com`. This is the site the browser loads, not the API URL. Spaces around commas are trimmed. An empty value in development allows every origin and prints a warning. Production exits when the list is empty. When the list is non-empty the API also allows the Capacitor origins `https://localhost` and `capacitor://localhost` |
 | `PORT` | Listen port. `5000` when unset, including in production. Many hosts set this themselves |
 | `NODE_ENV` | Set `production` on the public API process |
 | `FRONTEND_URL` | Public site origin used in password-reset links, with no path and no trailing slash, for example `https://unidex.example.com`. When it is empty the API uses the request `Origin`, then a relative path |
 | `RESEND_API_KEY` | Resend API key used to email reset links. When it is empty the API still starts and logs a warning. Do not commit the real value |
 | `RESEND_FROM` | From address. When it is empty the sender is `Unidex <onboarding@resend.dev>`. That Resend test sender can deliver only to the email address of the Resend account owner |
 
-The frontend has one build-time variable:
+The frontend has these build-time variables:
 
 | Variable | Production |
 |---|---|
-| `VITE_API_URL` | Full API prefix, including `/api`, for example `https://api.example.com/api`. Vite inlines it when `npm run build` runs. A production bundle with no value throws `VITE_API_URL is required for a production build.` when the app loads. `npm run dev` falls back to `http://<page-hostname>:5000/api` when this is unset |
+| `VITE_API_URL` | Full API prefix, including `/api`, for example `https://api.example.com/api`. Vite inlines it when `npm run build` runs. A production bundle with no value throws `VITE_API_URL is required for a production build.` when the app loads. `npm run dev` falls back to `http://<page-hostname>:5000/api` when this is unset. The Capacitor app does not use this variable |
+| `VITE_NATIVE_API_URL` | Optional override for the Android/iOS app only. When unset, the native app calls `https://sis-project-production-8d2536d4.up.railway.app/api`. The website build ignores it |
 
 `CORS_ORIGINS` and `VITE_API_URL` point at different hosts when the site and the API are on different origins. The browser origin goes in `CORS_ORIGINS`. The API origin plus `/api` goes in `VITE_API_URL`.
 

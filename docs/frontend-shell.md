@@ -77,11 +77,12 @@ The bell goes to `/notifications` for every role. Logout clears the token and se
 ## API client
 
 ```text
-baseURL = VITE_API_URL, if set
+baseURL = VITE_NATIVE_API_URL, or the production API, when Capacitor.isNativePlatform()
+        = VITE_API_URL, if set
         = http://${window.location.hostname}:5000/api    only when import.meta.env.DEV
 ```
 
-A production build without `VITE_API_URL` throws `VITE_API_URL is required for a production build.` when this module loads. The value must include the `/api` suffix. Vite inlines it at `npm run build`.
+A production website build without `VITE_API_URL` throws `VITE_API_URL is required for a production build.` when this module loads. The value must include the `/api` suffix. Vite inlines it at `npm run build`. The native app does not use `VITE_API_URL`. With `VITE_NATIVE_API_URL` unset it calls `https://sis-project-production-8d2536d4.up.railway.app/api`.
 
 Request interceptor sets `Authorization` from `localStorage.token` when present. There is no response interceptor. 401 handling is per page, except the initial `/auth/me` failure which deletes the token.
 

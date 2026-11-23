@@ -85,7 +85,7 @@ The full route list is [API reference](api-reference.md).
 ## Dependencies and interactions
 
 - The client has no build-time proxy. `vite.config.js` only registers `@vitejs/plugin-react`. `axios.js` uses `VITE_API_URL` when it is set. Vite inlines that value at `npm run build`. The `http://<page-host>:5000/api` fallback runs only under the Vite dev server. A production build without `VITE_API_URL` throws when the module loads.
-- CORS reads `CORS_ORIGINS` (`backend/src/server.js`). An empty list in development calls `cors()` with no origin list and prints a warning, so a phone on the LAN can reach the API. `NODE_ENV=production` refuses to start when the list is empty. A non-empty list is passed as `cors({ origin })`.
+- CORS reads `CORS_ORIGINS` (`backend/src/server.js`). An empty list in development calls `cors()` with no origin list and prints a warning, so a phone on the LAN can reach the API. `NODE_ENV=production` refuses to start when the list is empty. A non-empty list is passed as `cors({ origin })`, with `https://localhost` and `capacitor://localhost` added so the Capacitor WebView is allowed.
 - The API does not serve the frontend. In development they are two processes (Vite, and `node src/server.js`).
 - Academic rules that must stay consistent live on the server: `services/registration.js` and `services/gpa.js`. The client mirrors the grade total in `utils/format.js` so the roster can show a total before save. The server recomputes the total on save.
 - Registration locks the offering row with `SELECT ... FOR UPDATE` inside a transaction so two students cannot take the last seat together.
