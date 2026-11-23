@@ -16,6 +16,12 @@ function assertRuntimeConfig() {
   }
 }
 
+// Capacitor's WebView origin is not the deployed site. Android uses
+// https://localhost (server.androidScheme) and iOS uses capacitor://localhost.
+// Appended only when CORS_ORIGINS is a real allowlist, so dev's open CORS and
+// the production empty-list exit stay as they are.
+const CAPACITOR_ORIGINS = ['https://localhost', 'capacitor://localhost'];
+
 function corsMiddleware() {
   const list = (process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
   if (isProduction() && list.length === 0) {
@@ -26,7 +32,11 @@ function corsMiddleware() {
     console.warn('CORS is open to every origin so a phone on the LAN can call the API. Set CORS_ORIGINS before a shared deployment.');
     return cors();
   }
-  return cors({ origin: list });
+  const origins = [...list];
+  for (const origin of CAPACITOR_ORIGINS) {
+    if (!origins.includes(origin)) origins.push(origin);
+  }
+  return cors({ origin: origins });
 }
 
 assertRuntimeConfig();

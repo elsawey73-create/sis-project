@@ -1,0 +1,10 @@
+{
+  "appId": "com.unidex.app",
+  "appName": "Unidex",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "https",
+    "hostname": "localhost",
+    "html5mode": true
+  }
+}
