@@ -1,7 +1,7 @@
 export const DAYS = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu'];
 export const hhmm = (t) => (t || '').slice(0, 5);
 
-// يحوّل خطأ الـ API لنص بلغة المستخدم
+// Turn an API error into a sentence in the active language.
 export function errorText(err, t) {
   const d = err?.response?.data;
   const code = d?.error || 'NETWORK';

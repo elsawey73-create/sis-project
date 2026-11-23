@@ -6,6 +6,7 @@ const { withTx } = require('../utils/tx');
 const { attachMeetings } = require('../utils/meetings');
 const { gradeFromTotal, maxes, computeTotal } = require('../services/gpa');
 const { notify } = require('../services/notify');
+const { occupying } = require('../domain/enrollment');
 
 router.use(authenticate, authorize('instructor'));
 
@@ -20,7 +21,7 @@ async function ownOffering(req) {
   return o;
 }
 
-// موادي
+// My offerings.
 router.get('/offerings', async (req, res) => {
   let semesterId = req.query.semester_id;
   if (!semesterId) {
@@ -29,7 +30,9 @@ router.get('/offerings', async (req, res) => {
   }
   const [rows] = await db.query(
     `SELECT o.id, o.section, o.capacity, c.code, c.name_ar, c.name_en, c.credit_hours, c.has_practical,
-            (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = o.id AND e.status = 'enrolled') AS enrolled_count,
+            (SELECT COUNT(*) FROM enrollments e WHERE e.offering_id = o.id AND ${occupying('e.status')}) AS enrolled_count,
+            (SELECT COUNT(*) FROM enrollments e LEFT JOIN grades g ON g.enrollment_id = e.id
+              WHERE e.offering_id = o.id AND e.status = 'enrolled' AND (g.enrollment_id IS NULL OR g.total IS NULL)) AS pending_grades,
             (SELECT s.id FROM attendance_sessions s WHERE s.offering_id = o.id AND s.status = 'open' LIMIT 1) AS open_session_id
      FROM course_offerings o JOIN courses c ON c.id = o.course_id
      WHERE o.instructor_id = ? AND o.semester_id = ? ORDER BY c.code`,
@@ -39,7 +42,7 @@ router.get('/offerings', async (req, res) => {
   res.json(rows);
 });
 
-// قايمة الطلاب + الدرجات + الحضور
+// Roster, grades, and attendance counts.
 router.get('/offerings/:id/roster', async (req, res) => {
   const o = await ownOffering(req);
   const [students] = await db.query(
@@ -52,7 +55,7 @@ router.get('/offerings/:id/roster', async (req, res) => {
      JOIN users u ON u.id = e.student_id
      JOIN students st ON st.user_id = u.id
      LEFT JOIN grades g ON g.enrollment_id = e.id
-     WHERE e.offering_id = ? AND e.status IN ('enrolled','completed','failed')
+     WHERE e.offering_id = ? AND ${occupying('e.status')}
      ORDER BY st.student_code`,
     [o.id]
   );
@@ -65,7 +68,7 @@ router.get('/offerings/:id/roster', async (req, res) => {
   });
 });
 
-// حفظ الدرجات (بنحفظ بس الصفوف اللي اتغيّرت)
+// Save grades. Unchanged rows are skipped.
 router.put('/offerings/:id/grades', async (req, res) => {
   const o = await ownOffering(req);
   const list = req.body.grades;
@@ -77,7 +80,7 @@ router.put('/offerings/:id/grades', async (req, res) => {
   await withTx(async (conn) => {
     for (const g of list) {
       const [[enr]] = await conn.query(
-        "SELECT id FROM enrollments WHERE id = ? AND offering_id = ? AND status IN ('enrolled','completed','failed')",
+        `SELECT id FROM enrollments WHERE id = ? AND offering_id = ? AND ${occupying('status')}`,
         [g.enrollment_id, o.id]
       );
       if (!enr) throw new HttpError(400, 'INVALID_ENROLLMENT');
@@ -95,7 +98,7 @@ router.put('/offerings/:id/grades', async (req, res) => {
       if (!o.has_practical) vals.practical = null;
 
       const [[old]] = await conn.query('SELECT * FROM grades WHERE enrollment_id = ?', [enr.id]);
-      if (old && keys.every((k) => (old[k] === null ? null : Number(old[k])) === vals[k])) continue; // مفيش تغيير
+      if (old && keys.every((k) => (old[k] === null ? null : Number(old[k])) === vals[k])) continue; // unchanged
 
       const total = computeTotal(vals, o.has_practical);
       await conn.query(
@@ -105,14 +108,14 @@ router.put('/offerings/:id/grades', async (req, res) => {
            final_exam=VALUES(final_exam), total=VALUES(total), letter=NULL, points=NULL, published=0`,
         [enr.id, vals.coursework, vals.midterm, vals.practical, vals.final_exam, total]
       );
-      await conn.query("UPDATE enrollments SET status = 'enrolled' WHERE id = ?", [enr.id]); // التعديل بيلغي النشر
+      await conn.query("UPDATE enrollments SET status = 'enrolled' WHERE id = ?", [enr.id]); // Editing unpublishes the grade.
       saved++;
     }
   });
   res.json({ saved });
 });
 
-// نشر الدرجات: بيحسب التقدير ويظهر للطالب
+// Publish: compute the letter grade and show it to the student.
 router.post('/offerings/:id/grades/publish', async (req, res) => {
   const o = await ownOffering(req);
   const result = await withTx(async (conn) => {

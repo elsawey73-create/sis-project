@@ -1,7 +1,7 @@
 import { Fragment, useState } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
-import { Loading, Tag } from '../../components/ui';
+import { FetchBody, LoadError, Tag } from '../../components/ui';
 
 export default function Catalog() {
   const { t, pick } = useLanguage();
@@ -24,12 +24,15 @@ export default function Catalog() {
           {(depts.data || []).map((d) => <option key={d.id} value={d.id}>{pick(d.name_ar, d.name_en)}</option>)}
         </select>
       </div>
-      {courses.loading ? <Loading /> : (
+      {depts.error && <LoadError error={depts.error} onRetry={depts.reload} />}
+      <FetchBody loading={courses.loading} error={courses.error} data={courses.data} onRetry={courses.reload}>
+        {(list) => (
         <div className="table-wrap">
           <table className="table">
             <thead><tr><th>{t('col.code')}</th><th>{t('col.course')}</th><th>{t('col.department')}</th><th>{t('col.credits')}</th><th>{t('col.prereq')}</th></tr></thead>
             <tbody>
-              {(courses.data || []).map((c) => (
+              {list.length === 0 && <tr><td colSpan={5} className="muted">{t('reg.none')}</td></tr>}
+              {list.map((c) => (
                 <Fragment key={c.id}>
                   <tr className="clickable" onClick={() => setOpen(open === c.id ? null : c.id)}>
                     <td><strong>{c.code}</strong></td>
@@ -53,7 +56,8 @@ export default function Catalog() {
             </tbody>
           </table>
         </div>
-      )}
+        )}
+      </FetchBody>
     </div>
   );
 }

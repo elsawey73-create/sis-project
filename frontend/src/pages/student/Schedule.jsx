@@ -1,12 +1,13 @@
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import WeeklySchedule from '../../components/WeeklySchedule';
-import { Loading } from '../../components/ui';
+import { LoadError, Loading } from '../../components/ui';
 
 export default function Schedule() {
   const { t, pick } = useLanguage();
-  const { data, loading } = useFetch('/enrollments/me');
-  if (loading || !data) return <Loading />;
+  const { data, error, loading, reload } = useFetch('/enrollments/me');
+  if (loading) return <Loading />;
+  if (error || data == null) return <LoadError error={error} onRetry={reload} />;
   const items = data.courses.flatMap((c) => c.meetings.map((m) => ({ ...m, code: c.code, name_ar: c.name_ar, name_en: c.name_en })));
   return (
     <div className="card">

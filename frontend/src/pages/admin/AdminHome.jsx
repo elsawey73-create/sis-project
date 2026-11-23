@@ -1,12 +1,13 @@
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
-import { Loading, Stat } from '../../components/ui';
+import { LoadError, Loading, Stat } from '../../components/ui';
 
 export default function AdminHome() {
   const { t, pick } = useLanguage();
-  const { data, loading } = useFetch('/admin/stats');
-  if (loading || !data) return <Loading />;
+  const { data, error, loading, reload } = useFetch('/admin/stats');
+  if (loading) return <Loading />;
+  if (error || data == null) return <LoadError error={error} onRetry={reload} />;
   return (
     <>
       <div className="card">
@@ -17,13 +18,21 @@ export default function AdminHome() {
         <Stat label={t('role.student')} value={data.students} />
         <Stat label={t('role.instructor')} value={data.instructors} />
         <Stat label={t('stat.courses')} value={data.courses} />
-        <Stat label={t('stat.offerings')} value={data.offerings} />
-        <Stat label={t('stat.enrollments')} value={data.enrollments} />
+        <Stat
+          label={t('stat.activeOfferings')}
+          value={data.offerings}
+          hint={data.semester ? pick(data.semester.name_ar, data.semester.name_en) : t('admin.currentSemester')}
+        />
+        <Stat label={t('stat.enrollments')} value={data.enrollments} hint={t('admin.currentSemester')} />
       </div>
-      <div className="card gap-top toolbar">
-        <Link className="b b-ghost" to="/admin/catalog">{t('nav.manageCatalog')}</Link>
-        <Link className="b b-ghost" to="/admin/offerings">{t('nav.offerings')}</Link>
-        <Link className="b b-ghost" to="/admin/users">{t('nav.users')}</Link>
+      <div className="card gap-top">
+        <h3 className="m0">{t('home.quickLinks')}</h3>
+        <div className="toolbar">
+          <Link className="b b-primary" to="/admin/users">{t('nav.users')}</Link>
+          <Link className="b b-ghost" to="/admin/catalog">{t('nav.manageCatalog')}</Link>
+          <Link className="b b-ghost" to="/admin/offerings">{t('nav.offerings')}</Link>
+          <Link className="b b-ghost" to="/catalog">{t('nav.catalog')}</Link>
+        </div>
       </div>
     </>
   );

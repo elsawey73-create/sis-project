@@ -3,12 +3,16 @@ const db = require('../config/db');
 const { authenticate, authorize } = require('../middleware/auth');
 const { HttpError } = require('../utils/errors');
 const { withTx } = require('../utils/tx');
+const { visibleCodesForUser, codeLimit } = require('../domain/visibility');
 
 const admin = [authenticate, authorize('admin')];
 
-// ---------- الأقسام ----------
+// ---------- Departments ----------
 router.get('/departments', authenticate, async (req, res) => {
-  const [rows] = await db.query('SELECT * FROM departments ORDER BY code');
+  const allowed = await visibleCodesForUser(db, req.user);
+  const limit = codeLimit('code', allowed);
+  const where = limit.sql ? `WHERE ${limit.sql}` : '';
+  const [rows] = await db.query(`SELECT * FROM departments ${where} ORDER BY code`, limit.params);
   res.json(rows);
 });
 
@@ -31,11 +35,11 @@ router.put('/departments/:id', admin, async (req, res) => {
 });
 
 router.delete('/departments/:id', admin, async (req, res) => {
-  await db.query('DELETE FROM departments WHERE id = ?', [req.params.id]); // IN_USE لو مرتبط بحاجة
+  await db.query('DELETE FROM departments WHERE id = ?', [req.params.id]); // IN_USE when another row references this department.
   res.json({ ok: true });
 });
 
-// ---------- المقررات ----------
+// ---------- Courses ----------
 async function loadCourses(where, params) {
   const [courses] = await db.query(
     `SELECT c.*, d.code AS department_code, d.name_ar AS department_ar, d.name_en AS department_en
@@ -56,6 +60,8 @@ router.get('/courses', authenticate, async (req, res) => {
   const { department_id, q } = req.query;
   const conds = [];
   const params = [];
+  const limit = codeLimit('d.code', await visibleCodesForUser(db, req.user));
+  if (limit.sql) { conds.push(limit.sql); params.push(...limit.params); }
   if (department_id) { conds.push('c.department_id = ?'); params.push(department_id); }
   if (q) {
     conds.push('(c.code LIKE ? OR c.name_ar LIKE ? OR c.name_en LIKE ?)');
@@ -68,6 +74,8 @@ router.get('/courses', authenticate, async (req, res) => {
 router.get('/courses/:id', authenticate, async (req, res) => {
   const [c] = await loadCourses('WHERE c.id = ?', [req.params.id]);
   if (!c) throw new HttpError(404, 'NOT_FOUND');
+  const allowed = await visibleCodesForUser(db, req.user);
+  if (allowed && !allowed.includes(c.department_code)) throw new HttpError(404, 'NOT_FOUND');
   res.json(c);
 });
 
@@ -117,7 +125,7 @@ router.delete('/courses/:id', admin, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ---------- الترمات ----------
+// ---------- Semesters ----------
 router.get('/semesters', authenticate, async (req, res) => {
   const [rows] = await db.query(
     `SELECT *, (CURDATE() BETWEEN registration_start AND registration_end) AS registration_open
@@ -156,7 +164,7 @@ router.put('/semesters/:id', admin, async (req, res) => {
   res.json({ ok: true });
 });
 
-// ---------- الدكاترة (للأدمن عشان يختارهم في الجداول) ----------
+// ---------- Instructors (admin picks them when building a schedule) ----------
 router.get('/instructors', admin, async (req, res) => {
   const [rows] = await db.query(
     `SELECT u.id, u.login_id, u.full_name_ar, u.full_name_en, d.name_ar AS department_ar, d.name_en AS department_en

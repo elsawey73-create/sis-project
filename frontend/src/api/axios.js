@@ -1,9 +1,17 @@
 import axios from 'axios';
 
-// كل الطلبات للباك اند بتعدّي من هنا. العنوان بياخد نفس الـ host اللي الموقع مفتوح عليه
-// (عشان الموبايل على نفس الشبكة يقدر يكلم السيرفر). ممكن تغيّره بـ VITE_API_URL.
+// Vite inlines VITE_API_URL at build time. Include the /api suffix.
+// `npm run dev` falls back to the page hostname on port 5000 so a phone on the
+// LAN can reach a local API. A production build without VITE_API_URL fails on load.
+function apiBaseUrl() {
+  const configured = import.meta.env.VITE_API_URL;
+  if (configured) return configured;
+  if (import.meta.env.DEV) return `http://${window.location.hostname}:5000/api`;
+  throw new Error('VITE_API_URL is required for a production build.');
+}
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || `http://${window.location.hostname}:5000/api`,
+  baseURL: apiBaseUrl(),
 });
 
 api.interceptors.request.use((config) => {

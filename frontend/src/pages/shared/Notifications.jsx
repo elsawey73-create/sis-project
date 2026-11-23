@@ -1,13 +1,16 @@
 import { Link } from 'react-router-dom';
 import api from '../../api/axios';
+import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
-import { Loading } from '../../components/ui';
+import { LoadError, Loading } from '../../components/ui';
 
 export default function Notifications() {
+  const { user } = useAuth();
   const { t, pick } = useLanguage();
-  const { data, loading, reload } = useFetch('/notifications');
-  if (loading || !data) return <Loading />;
+  const { data, error, loading, reload } = useFetch('/notifications');
+  if (loading) return <Loading />;
+  if (error || data == null) return <LoadError error={error} onRetry={reload} />;
 
   const text = (n) => {
     if (n.type === 'message') return `${t('notif.message')} ${pick(n.data.from_ar, n.data.from_en)}`;
@@ -25,7 +28,9 @@ export default function Notifications() {
       {data.map((n) => (
         <div key={n.id} className={`notif ${n.is_read ? '' : 'unread'}`}>
           <div>
-            {n.type === 'message' ? <Link to={`/messages/${n.data.thread_id}`}>{text(n)}</Link> : text(n)}
+            {n.type === 'message' && user.role !== 'admin'
+              ? <Link to={`/messages/${n.data.thread_id}`}>{text(n)}</Link>
+              : text(n)}
           </div>
           <div className="small muted">{n.created_at}</div>
         </div>

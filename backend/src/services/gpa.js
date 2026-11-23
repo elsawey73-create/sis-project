@@ -1,4 +1,4 @@
-// مقياس التقديرات (من 100) والنقاط
+// Letter scale for a score out of 100, and the grade points for each letter.
 const SCALE = [
   [97, 'A+', 4.0], [93, 'A', 4.0], [89, 'A-', 3.7],
   [84, 'B+', 3.3], [80, 'B', 3.0], [76, 'B-', 2.7],
@@ -11,7 +11,7 @@ function gradeFromTotal(total) {
   return { letter: 'F', points: 0 };
 }
 
-// توزيع الدرجات: المادة اللي فيها عملي مختلفة عن اللي مفيهاش
+// Component maximums. A course with a practical uses a different split.
 function maxes(hasPractical) {
   return hasPractical
     ? { coursework: 20, midterm: 20, practical: 10, final_exam: 50 }
@@ -26,33 +26,68 @@ function computeTotal(g, hasPractical) {
   return Math.round(need.reduce((s, k) => s + Number(g[k]), 0) * 100) / 100;
 }
 
-// GPA التراكمي والساعات (q = db أو connection)
+// Pass-only grades (PP, P) earn credit hours but carry no grade points, so they stay out of GPA.
+const PASS_ONLY = new Set(['PP', 'P']);
+const isPassOnly = (letter) => PASS_ONLY.has(String(letter || '').toUpperCase());
+
+// A later attempt replaces an earlier one when its semester starts later.
+// The same start date uses the higher enrollment id.
+function isLaterAttempt(candidate, current) {
+  if (candidate.start_date !== current.start_date) return candidate.start_date > current.start_date;
+  return Number(candidate.enrollment_id) > Number(current.enrollment_id);
+}
+
+// Cumulative GPA keeps one published attempt per course. Term GPA does not use this.
+// rows need enrollment_id, course_id, credit_hours, points, letter, and start_date.
+function standingFromAttempts(rows) {
+  const latest = new Map();
+  for (const row of rows) {
+    const prev = latest.get(row.course_id);
+    if (!prev || isLaterAttempt(row, prev)) latest.set(row.course_id, row);
+  }
+  let attempted = 0;
+  let earned = 0;
+  let quality = 0;
+  const countedIds = new Set();
+  for (const row of latest.values()) {
+    const hours = Number(row.credit_hours);
+    const points = Number(row.points);
+    countedIds.add(Number(row.enrollment_id));
+    if (isPassOnly(row.letter)) { earned += hours; continue; }
+    attempted += hours;
+    quality += hours * points;
+    if (points > 0) earned += hours;
+  }
+  return {
+    cgpa: attempted ? Math.round((quality / attempted) * 100) / 100 : null,
+    credits_attempted: attempted,
+    credits_earned: earned,
+    countedIds,
+  };
+}
+
+// Cumulative GPA and credits. q is the pool or a transaction connection.
 async function getStanding(q, studentId) {
   const [rows] = await q.query(
-    `SELECT c.credit_hours, g.points
+    `SELECT e.id AS enrollment_id, c.id AS course_id, c.credit_hours, g.points, g.letter, s.start_date
      FROM enrollments e
      JOIN course_offerings o ON o.id = e.offering_id
+     JOIN semesters s ON s.id = o.semester_id
      JOIN courses c ON c.id = o.course_id
      JOIN grades g ON g.enrollment_id = e.id AND g.published = 1
      WHERE e.student_id = ? AND e.status IN ('completed','failed')`,
     [studentId]
   );
-  let attempted = 0, earned = 0, quality = 0;
-  for (const r of rows) {
-    attempted += r.credit_hours;
-    quality += r.credit_hours * Number(r.points);
-    if (Number(r.points) > 0) earned += r.credit_hours;
-  }
-  const cgpa = attempted ? Math.round((quality / attempted) * 100) / 100 : null;
-  return { cgpa, credits_attempted: attempted, credits_earned: earned };
+  const { cgpa, credits_attempted, credits_earned } = standingFromAttempts(rows);
+  return { cgpa, credits_attempted, credits_earned };
 }
 
-// الحد الأقصى للساعات حسب الـ GPA
+// Credit cap for registration, from the cumulative GPA.
 function maxCredits(standing) {
   if (standing.cgpa === null) return 18;
-  if (standing.cgpa < 2) return 12;
+  if (standing.cgpa < 2) return 14;
   if (standing.cgpa < 3) return 18;
   return 21;
 }
 
-module.exports = { gradeFromTotal, maxes, computeTotal, getStanding, maxCredits };
+module.exports = { gradeFromTotal, maxes, computeTotal, getStanding, standingFromAttempts, maxCredits, isPassOnly };

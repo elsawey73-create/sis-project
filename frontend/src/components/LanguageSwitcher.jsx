@@ -9,7 +9,7 @@ export default function LanguageSwitcher() {
   function toggle() {
     const next = lang === 'ar' ? 'en' : 'ar';
     setLang(next);
-    // لو مسجّل دخول، نحفظ اللغة في الداتابيز
+    // When signed in, store the language on the account.
     if (user) api.patch('/auth/language', { lang: next }).catch(() => {});
   }
 

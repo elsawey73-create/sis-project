@@ -2,46 +2,52 @@ const db = require('../config/db');
 const { HttpError } = require('../utils/errors');
 const { withTx } = require('../utils/tx');
 const { getStanding, maxCredits } = require('./gpa');
+const { occupying } = require('../domain/enrollment');
+const { visibleCodesForUser } = require('../domain/visibility');
 
 const overlap = (a, b) =>
   a.day_of_week === b.day_of_week && a.start_time < b.end_time && b.start_time < a.end_time;
 
-// تسجيل مادة لطالب مع كل القواعد
+// Register one offering. Every rule runs inside one transaction.
 async function register(studentId, offeringId) {
   return withTx(async (conn) => {
-    // قفل الـ offering عشان اتنين مايدخلوا آخر مكان في نفس اللحظة
+    // Lock the offering so two students cannot take the last seat together.
     await conn.query('SELECT id FROM course_offerings WHERE id = ? FOR UPDATE', [offeringId]);
 
     const [[off]] = await conn.query(
-      `SELECT o.id, o.course_id, o.semester_id, o.capacity, c.code, c.credit_hours,
+      `SELECT o.id, o.course_id, o.semester_id, o.capacity, c.code, c.credit_hours, d.code AS department_code,
               (CURDATE() BETWEEN s.registration_start AND s.registration_end) AS reg_open
        FROM course_offerings o
        JOIN courses c ON c.id = o.course_id
+       JOIN departments d ON d.id = c.department_id
        JOIN semesters s ON s.id = o.semester_id
        WHERE o.id = ?`,
       [offeringId]
     );
     if (!off) throw new HttpError(404, 'NOT_FOUND');
 
-    // 1) فترة التسجيل
+    const allowed = await visibleCodesForUser(conn, { id: studentId, role: 'student' });
+    if (allowed && !allowed.includes(off.department_code)) throw new HttpError(403, 'OUT_OF_PROGRAM');
+
+    // 1) Registration window.
     if (!off.reg_open) throw new HttpError(403, 'REGISTRATION_CLOSED');
 
-    // 2) مسجّل قبل كده؟
+    // 2) Already on this offering?
     const [[existing]] = await conn.query(
       'SELECT id, status FROM enrollments WHERE student_id = ? AND offering_id = ?',
       [studentId, offeringId]
     );
     if (existing && existing.status !== 'dropped') throw new HttpError(409, 'ALREADY_ENROLLED');
 
-    // 3) نفس المادة في شعبة تانية بنفس الترم؟
+    // 3) Same course in another section this semester?
     const [same] = await conn.query(
       `SELECT e.id FROM enrollments e JOIN course_offerings o ON o.id = e.offering_id
-       WHERE e.student_id = ? AND o.course_id = ? AND o.semester_id = ? AND e.status = 'enrolled'`,
+       WHERE e.student_id = ? AND o.course_id = ? AND o.semester_id = ? AND ${occupying('e.status')}`,
       [studentId, off.course_id, off.semester_id]
     );
     if (same.length) throw new HttpError(409, 'COURSE_ALREADY_IN_SEMESTER');
 
-    // 4) نجح فيها قبل كده؟
+    // 4) Passed this course before?
     const [passedRows] = await conn.query(
       `SELECT DISTINCT o.course_id FROM enrollments e JOIN course_offerings o ON o.id = e.offering_id
        WHERE e.student_id = ? AND e.status = 'completed'`,
@@ -50,7 +56,7 @@ async function register(studentId, offeringId) {
     const passed = new Set(passedRows.map((r) => r.course_id));
     if (passed.has(off.course_id)) throw new HttpError(409, 'ALREADY_PASSED');
 
-    // 5) المتطلبات السابقة
+    // 5) Prerequisites.
     const [pre] = await conn.query(
       `SELECT pc.id, pc.code FROM course_prerequisites p
        JOIN courses pc ON pc.id = p.prerequisite_id WHERE p.course_id = ?`,
@@ -59,14 +65,14 @@ async function register(studentId, offeringId) {
     const missing = pre.filter((p) => !passed.has(p.id)).map((p) => p.code);
     if (missing.length) throw new HttpError(409, 'PREREQ_NOT_MET', { courses: missing });
 
-    // 6) السعة
+    // 6) Capacity.
     const [[cnt]] = await conn.query(
-      "SELECT COUNT(*) AS n FROM enrollments WHERE offering_id = ? AND status = 'enrolled'",
+      `SELECT COUNT(*) AS n FROM enrollments WHERE offering_id = ? AND ${occupying('status')}`,
       [offeringId]
     );
     if (cnt.n >= off.capacity) throw new HttpError(409, 'SECTION_FULL');
 
-    // 7) تعارض المواعيد
+    // 7) Schedule overlap.
     const [target] = await conn.query('SELECT * FROM offering_meetings WHERE offering_id = ?', [offeringId]);
     const [mine] = await conn.query(
       `SELECT m.day_of_week, m.start_time, m.end_time, c.code
@@ -74,7 +80,7 @@ async function register(studentId, offeringId) {
        JOIN course_offerings o ON o.id = e.offering_id
        JOIN courses c ON c.id = o.course_id
        JOIN offering_meetings m ON m.offering_id = o.id
-       WHERE e.student_id = ? AND e.status = 'enrolled' AND o.semester_id = ?`,
+       WHERE e.student_id = ? AND ${occupying('e.status')} AND o.semester_id = ?`,
       [studentId, off.semester_id]
     );
     for (const a of target) {
@@ -82,19 +88,19 @@ async function register(studentId, offeringId) {
       if (hit) throw new HttpError(409, 'TIME_CONFLICT', { course: hit.code });
     }
 
-    // 8) الحد الأقصى للساعات حسب الـ GPA
+    // 8) Credit cap from the cumulative GPA.
     const [[cr]] = await conn.query(
       `SELECT COALESCE(SUM(c.credit_hours), 0) AS credits
        FROM enrollments e JOIN course_offerings o ON o.id = e.offering_id
        JOIN courses c ON c.id = o.course_id
-       WHERE e.student_id = ? AND e.status = 'enrolled' AND o.semester_id = ?`,
+       WHERE e.student_id = ? AND ${occupying('e.status')} AND o.semester_id = ?`,
       [studentId, off.semester_id]
     );
     const max = maxCredits(await getStanding(conn, studentId));
     const current = Number(cr.credits);
     if (current + off.credit_hours > max) throw new HttpError(409, 'CREDIT_LIMIT', { max, current });
 
-    // تمام: سجّل
+    // Insert a new row, or revive a dropped one.
     if (existing) {
       await conn.query("UPDATE enrollments SET status = 'enrolled', enrolled_at = NOW() WHERE id = ?", [existing.id]);
       return { id: existing.id };
@@ -107,7 +113,7 @@ async function register(studentId, offeringId) {
   });
 }
 
-// حذف مادة (في فترة التسجيل بس)
+// Drop is allowed only during the registration window, and only while status is enrolled.
 async function drop(studentId, enrollmentId) {
   const [[e]] = await db.query(
     `SELECT e.id, e.status, (CURDATE() BETWEEN s.registration_start AND s.registration_end) AS reg_open

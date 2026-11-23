@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LanguageProvider, useLanguage } from './context/LanguageContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth, homeByRole } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
@@ -22,7 +23,7 @@ import Catalog from './pages/shared/Catalog';
 import Messages from './pages/shared/Messages';
 import Notifications from './pages/shared/Notifications';
 
-// "/" يوجّه كل واحد لصفحته حسب دوره
+// "/" sends each role to its home page.
 function RootRedirect() {
   const { user, loading } = useAuth();
   const { t } = useLanguage();
@@ -33,13 +34,14 @@ function RootRedirect() {
 export default function App() {
   return (
     <LanguageProvider>
-      <AuthProvider>
-        <BrowserRouter>
-          <Routes>
+      <ThemeProvider>
+        <AuthProvider>
+          <BrowserRouter>
+            <Routes>
             <Route path="/" element={<RootRedirect />} />
             <Route path="/login" element={<Login />} />
 
-            {/* أي مستخدم مسجّل */}
+            {/* Any signed-in user */}
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>
                 <Route path="/catalog" element={<Catalog />} />
@@ -84,9 +86,10 @@ export default function App() {
             </Route>
 
             <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
-      </AuthProvider>
+            </Routes>
+          </BrowserRouter>
+        </AuthProvider>
+      </ThemeProvider>
     </LanguageProvider>
   );
 }

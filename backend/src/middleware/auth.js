@@ -1,23 +1,32 @@
 const jwt = require('jsonwebtoken');
+const db = require('../config/db');
 
-// بنرجّع "كود" الخطأ والفرونت هو اللي بيترجمه للغة المستخدم
+// Handlers return an error code. The frontend translates it.
 
-// يتأكد إن المستخدم باعت توكن سليم
-function authenticate(req, res, next) {
+// Require a valid bearer token whose tv still matches users.token_version.
+async function authenticate(req, res, next) {
   const header = req.headers.authorization || '';
   const token = header.startsWith('Bearer ') ? header.slice(7) : null;
   if (!token) return res.status(401).json({ error: 'UNAUTHENTICATED' });
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = { id: payload.id, role: payload.role };
+    const [rows] = await db.query('SELECT token_version, role FROM users WHERE id = ?', [payload.id]);
+    if (!rows[0] || Number(rows[0].token_version) !== Number(payload.tv)) {
+      return res.status(401).json({ error: 'SESSION_EXPIRED' });
+    }
+    // users.role is the source of truth. A role edited in the database applies on the next request.
+    req.user = { id: payload.id, role: rows[0].role };
     next();
-  } catch {
-    res.status(401).json({ error: 'SESSION_EXPIRED' });
+  } catch (err) {
+    if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError' || err.name === 'NotBeforeError') {
+      return res.status(401).json({ error: 'SESSION_EXPIRED' });
+    }
+    next(err);
   }
 }
 
-// يسمح بس للأدوار المحددة: authorize('admin') أو authorize('instructor','admin')
+// Restrict the route. Example: authorize('admin') or authorize('instructor', 'admin').
 function authorize(...roles) {
   return (req, res, next) => {
     if (!roles.includes(req.user.role)) {

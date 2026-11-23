@@ -1,6 +1,6 @@
 const db = require('../config/db');
 
-// يشغّل مجموعة استعلامات كـ Transaction واحدة (يا كلها يا ولا حاجة)
+// Run the callback in one transaction. Commit every statement, or roll them all back.
 async function withTx(fn) {
   const conn = await db.getConnection();
   try {

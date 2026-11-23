@@ -9,7 +9,7 @@ const messages = express.Router();
 const notifications = express.Router();
 const who = [authenticate, authorize('student', 'instructor')];
 
-// الأشخاص اللي أقدر أراسلهم (الطالب: دكاترة موادّه / الدكتور: طلاب موادّه)
+// People the caller may message. Students see their instructors. Instructors see their students.
 async function contactsFor(user) {
   const sql =
     user.role === 'student'
@@ -97,7 +97,7 @@ function cleanBody(b) {
   return body;
 }
 
-// رسالة جديدة
+// New thread.
 messages.post('/threads', who, async (req, res) => {
   const { receiver_id, offering_id, subject } = req.body;
   const body = cleanBody(req.body.body);
@@ -119,7 +119,7 @@ messages.post('/threads', who, async (req, res) => {
   res.status(201).json({ id });
 });
 
-// رد
+// Reply.
 messages.post('/threads/:id/reply', who, async (req, res) => {
   const root = await getThread(req);
   const body = cleanBody(req.body.body);
@@ -135,7 +135,7 @@ messages.post('/threads/:id/reply', who, async (req, res) => {
   res.status(201).json({ ok: true });
 });
 
-// ---------- الإشعارات ----------
+// ---------- Notifications ----------
 notifications.get('/', authenticate, async (req, res) => {
   const [rows] = await db.query('SELECT id, type, data, is_read, created_at FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 50', [req.user.id]);
   rows.forEach((r) => { try { r.data = JSON.parse(r.data || '{}'); } catch { r.data = {}; } });

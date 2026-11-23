@@ -3,7 +3,7 @@ import { translations } from '../i18n/translations';
 
 const LanguageContext = createContext(null);
 
-// اللغة اللي المستخدم اختارها قبل كده على الجهاز ده (لو فيه)
+// Language previously chosen on this device, if any.
 export function readStoredLang() {
   try {
     const l = localStorage.getItem('lang');
@@ -16,7 +16,7 @@ export function readStoredLang() {
 export function LanguageProvider({ children }) {
   const [lang, setLangState] = useState(readStoredLang() || 'ar');
 
-  // يغيّر اتجاه الصفحة (RTL / LTR) تلقائياً
+  // Keep document direction in sync with the language (RTL or LTR).
   useEffect(() => {
     document.documentElement.lang = lang;
     document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr';
@@ -31,13 +31,13 @@ export function LanguageProvider({ children }) {
     }
   }, []);
 
-  // t('login.title') => النص باللغة الحالية
+  // t('login.title') returns the string for the active language.
   const t = useCallback(
     (key) => translations[lang][key] ?? translations.ar[key] ?? key,
     [lang]
   );
 
-  // pick(عربي, إنجليزي) => للبيانات اللي جاية من الداتابيز (أسماء، أقسام، مواد)
+  // pick(arabic, english) chooses a database field (names, departments, courses).
   const pick = useCallback((ar, en) => (lang === 'en' && en ? en : ar), [lang]);
 
   return (

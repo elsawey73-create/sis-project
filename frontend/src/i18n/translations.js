@@ -1,9 +1,13 @@
-// كل النصوص في مكان واحد. لإضافة نص جديد: ضيفه في ar و en بنفس المفتاح.
+// Every UI string lives here. Add a new string under the same key in both ar and en.
 export const translations = {
   ar: {
     'app.name': 'Unidex',
     'app.tagline': 'منصتك الجامعية المتكاملة',
     'lang.switch': 'English',
+    'theme.light': 'فاتح',
+    'theme.dark': 'داكن',
+    'theme.system': 'تلقائي',
+    'theme.switch': 'تغيير المظهر',
 
     'common.loading': 'جاري التحميل...',
     'common.saved': 'تم الحفظ',
@@ -13,6 +17,7 @@ export const translations = {
     'common.edit': 'تعديل',
     'common.delete': 'حذف',
     'common.confirm': 'متأكد؟',
+    'common.retry': 'إعادة المحاولة',
 
     'login.title': 'تسجيل الدخول',
     'login.id': 'الرقم التعريفي (ID)',
@@ -43,6 +48,18 @@ export const translations = {
 
     'home.welcome': 'أهلاً',
     'home.regHint': 'فترة التسجيل مفتوحة دلوقتي',
+    'home.schedule': 'الجدول الحالي',
+    'home.recentGrades': 'آخر الدرجات',
+    'home.attendance': 'الحضور',
+    'home.nextMeetings': 'المحاضرات الجاية',
+    'home.noMeetings': 'مفيش محاضرات متبقية الأسبوع ده',
+    'home.viewAll': 'عرض الكل',
+    'home.pendingGrades': 'درجات لسه مترصدتش',
+    'home.openSessions': 'جلسات حضور مفتوحة',
+    'home.sections': 'شعبي الحالية',
+    'home.nonePending': 'مفيش درجات معلقة',
+    'home.noneOpen': 'مفيش جلسة حضور مفتوحة',
+    'home.quickLinks': 'اختصارات',
     'student.code': 'الرقم الجامعي',
     'student.department': 'القسم',
 
@@ -52,10 +69,13 @@ export const translations = {
     'stat.courses': 'المقررات',
     'stat.offerings': 'المواد المطروحة',
     'stat.enrollments': 'التسجيلات',
+    'stat.activeOfferings': 'الشعب النشطة',
 
     'reg.open': 'التسجيل مفتوح',
     'reg.closed': 'التسجيل مقفول',
     'reg.registered': 'مسجّلة',
+    'reg.completed': 'تم رصد الدرجة',
+    'reg.failed': 'راسب',
     'reg.passed': 'ناجح فيها',
     'reg.needs': 'يلزم',
     'reg.full': 'مكتملة',
@@ -80,6 +100,7 @@ export const translations = {
     'col.student': 'الطالب',
     'col.name': 'الاسم',
     'col.semester': 'الترم',
+    'col.pending': 'معلّق',
 
     'catalog.search': 'بحث بالكود أو الاسم...',
     'catalog.allDepts': 'كل الأقسام',
@@ -100,7 +121,9 @@ export const translations = {
     'att.history': 'سجل المحاضرات',
     'att.date': 'التاريخ',
     'att.view': 'عرض',
-    'att.qrHint': 'الكود بيتجدد كل 20 ثانية. الطلاب يصوّروه بكاميرا الموبايل.',
+    'att.qrHint': 'الكود بيتجدد كل 20 ثانية، وبيبطل بعد 30 ثانية. الطلاب يصوّروه بكاميرا الموبايل.',
+    'att.phoneHost': 'الموبايل مش هيقدر يفتح الكود ده لأن الموقع مفتوح على هذا الجهاز فقط. افتح Unidex من عنوان الشبكة (مثل 192.168.x.x) على الكمبيوتر، وبعدين ابدأ الحضور من جديد.',
+    'att.already': 'حضورك متسجل بالفعل في الجلسة دي.',
     'att.close': 'إنهاء الحضور',
     'att.closed': 'الجلسة مقفولة',
     'att.s.present': 'حاضر', 'att.s.late': 'متأخر', 'att.s.excused': 'بعذر', 'att.s.absent': 'غائب',
@@ -113,6 +136,7 @@ export const translations = {
     'grade.total': 'المجموع',
     'grade.letter': 'التقدير',
     'grade.points': 'النقاط',
+    'grade.replaced': 'لا يُحسب في المعدل',
 
     'transcript.print': 'طباعة / حفظ PDF',
     'transcript.title': 'كشف الدرجات (الترانسكريبت)',
@@ -121,6 +145,7 @@ export const translations = {
     'transcript.semGpa': 'معدل الترم',
     'transcript.attempted': 'الساعات المسجّلة',
     'transcript.earned': 'الساعات المنجزة',
+    'transcript.repeatNote': 'المعدل التراكمي يحسب آخر محاولة منشورة لكل مقرر. المحاولة الأقدم تبقى في كشف الترم ولا تدخل في المعدل التراكمي.',
 
     'doc.gradesStudents': 'الطلاب والدرجات',
     'doc.continueAtt': 'متابعة الحضور',
@@ -197,6 +222,7 @@ export const translations = {
     'error.SECTION_FULL': 'الشعبة مكتملة',
     'error.TIME_CONFLICT': 'فيه تعارض في المواعيد مع',
     'error.CREDIT_LIMIT': 'تجاوزت الحد الأقصى للساعات',
+    'error.OUT_OF_PROGRAM': 'المادة دي مش متاحة لقسمك',
     'error.NOT_ENROLLED': 'أنت مش مسجّل في المادة دي',
     'error.INVALID_ENROLLMENT': 'تسجيل غير صالح',
     'error.INVALID_GRADE': 'درجة غير صالحة',
@@ -215,6 +241,10 @@ export const translations = {
     'app.name': 'Unidex',
     'app.tagline': 'Your all-in-one university platform',
     'lang.switch': 'العربية',
+    'theme.light': 'Light',
+    'theme.dark': 'Dark',
+    'theme.system': 'System',
+    'theme.switch': 'Change theme',
 
     'common.loading': 'Loading...',
     'common.saved': 'Saved',
@@ -224,6 +254,7 @@ export const translations = {
     'common.edit': 'Edit',
     'common.delete': 'Delete',
     'common.confirm': 'Are you sure?',
+    'common.retry': 'Try again',
 
     'login.title': 'Sign in',
     'login.id': 'ID',
@@ -254,6 +285,18 @@ export const translations = {
 
     'home.welcome': 'Welcome',
     'home.regHint': 'Course registration is open now',
+    'home.schedule': 'Current schedule',
+    'home.recentGrades': 'Recent grades',
+    'home.attendance': 'Attendance',
+    'home.nextMeetings': 'Upcoming classes',
+    'home.noMeetings': 'No remaining classes this week',
+    'home.viewAll': 'View all',
+    'home.pendingGrades': 'Grades not entered',
+    'home.openSessions': 'Open attendance sessions',
+    'home.sections': 'My current sections',
+    'home.nonePending': 'No pending grades',
+    'home.noneOpen': 'No open attendance session',
+    'home.quickLinks': 'Quick links',
     'student.code': 'Student ID',
     'student.department': 'Department',
 
@@ -263,10 +306,13 @@ export const translations = {
     'stat.courses': 'Courses',
     'stat.offerings': 'Offerings',
     'stat.enrollments': 'Enrollments',
+    'stat.activeOfferings': 'Active offerings',
 
     'reg.open': 'Registration open',
     'reg.closed': 'Registration closed',
     'reg.registered': 'Registered',
+    'reg.completed': 'Graded',
+    'reg.failed': 'Failed',
     'reg.passed': 'Passed',
     'reg.needs': 'Requires',
     'reg.full': 'Full',
@@ -291,6 +337,7 @@ export const translations = {
     'col.student': 'Student',
     'col.name': 'Name',
     'col.semester': 'Semester',
+    'col.pending': 'Pending',
 
     'catalog.search': 'Search by code or name...',
     'catalog.allDepts': 'All departments',
@@ -311,7 +358,9 @@ export const translations = {
     'att.history': 'Session history',
     'att.date': 'Date',
     'att.view': 'View',
-    'att.qrHint': 'The code refreshes every 20 seconds. Students scan it with their phone camera.',
+    'att.qrHint': 'The code refreshes every 20 seconds and expires after 30 seconds. Students scan it with their phone camera.',
+    'att.phoneHost': 'A phone cannot open this code because the site is open on this computer only. Open Unidex using this machine\'s network address (for example 192.168.x.x), then start attendance again.',
+    'att.already': 'Your attendance for this session is already recorded.',
     'att.close': 'End attendance',
     'att.closed': 'Session closed',
     'att.s.present': 'Present', 'att.s.late': 'Late', 'att.s.excused': 'Excused', 'att.s.absent': 'Absent',
@@ -324,6 +373,7 @@ export const translations = {
     'grade.total': 'Total',
     'grade.letter': 'Grade',
     'grade.points': 'Points',
+    'grade.replaced': 'Not in cumulative GPA',
 
     'transcript.print': 'Print / Save as PDF',
     'transcript.title': 'Academic Transcript',
@@ -332,6 +382,7 @@ export const translations = {
     'transcript.semGpa': 'Semester GPA',
     'transcript.attempted': 'Credits attempted',
     'transcript.earned': 'Credits earned',
+    'transcript.repeatNote': 'Cumulative GPA uses the latest published attempt of each course. An earlier attempt stays on that term and is left out of the cumulative average.',
 
     'doc.gradesStudents': 'Students & Grades',
     'doc.continueAtt': 'Continue attendance',
@@ -408,6 +459,7 @@ export const translations = {
     'error.SECTION_FULL': 'This section is full',
     'error.TIME_CONFLICT': 'Schedule conflict with',
     'error.CREDIT_LIMIT': 'Credit hour limit exceeded',
+    'error.OUT_OF_PROGRAM': 'This course is not available for your department',
     'error.NOT_ENROLLED': 'You are not enrolled in this course',
     'error.INVALID_ENROLLMENT': 'Invalid enrollment',
     'error.INVALID_GRADE': 'Invalid grade',

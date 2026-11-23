@@ -4,6 +4,7 @@ const db = require('../config/db');
 const { authenticate, authorize } = require('../middleware/auth');
 const { HttpError } = require('../utils/errors');
 const { withTx } = require('../utils/tx');
+const { occupying } = require('../domain/enrollment');
 
 router.use(authenticate, authorize('admin'));
 
@@ -18,7 +19,7 @@ router.get('/stats', async (req, res) => {
     courses: await one('SELECT COUNT(*) AS n FROM courses'),
     offerings: await one('SELECT COUNT(*) AS n FROM course_offerings WHERE semester_id = ?', [sid]),
     enrollments: await one(
-      "SELECT COUNT(*) AS n FROM enrollments e JOIN course_offerings o ON o.id = e.offering_id WHERE o.semester_id = ? AND e.status = 'enrolled'",
+      `SELECT COUNT(*) AS n FROM enrollments e JOIN course_offerings o ON o.id = e.offering_id WHERE o.semester_id = ? AND ${occupying('e.status')}`,
       [sid]
     ),
   });
@@ -66,7 +67,11 @@ router.post('/users', async (req, res) => {
 
 router.put('/users/:id/password', async (req, res) => {
   if (String(req.body.password || '').length < 6) throw new HttpError(400, 'WEAK_PASSWORD');
-  await db.query('UPDATE users SET password_hash = ? WHERE id = ?', [await bcrypt.hash(req.body.password, 10), req.params.id]);
+  const [result] = await db.query(
+    'UPDATE users SET password_hash = ?, token_version = token_version + 1 WHERE id = ?',
+    [await bcrypt.hash(req.body.password, 10), req.params.id]
+  );
+  if (!result.affectedRows) throw new HttpError(404, 'USER_NOT_FOUND');
   res.json({ ok: true });
 });
 

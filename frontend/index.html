@@ -5,6 +5,19 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Unidex</title>
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('theme');
+          var mode = stored === 'light' || stored === 'dark' || stored === 'system' ? stored : 'system';
+          var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+          var resolved = mode === 'dark' || (mode === 'system' && dark) ? 'dark' : 'light';
+          document.documentElement.setAttribute('data-theme', resolved);
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

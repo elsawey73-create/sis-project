@@ -4,10 +4,11 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { attachMeetings } = require('../utils/meetings');
 const { register, drop } = require('../services/registration');
 const { getStanding, maxCredits } = require('../services/gpa');
+const { occupying } = require('../domain/enrollment');
 
 router.use(authenticate, authorize('student'));
 
-// موادي في الترم (الافتراضي: الحالي) + الجدول
+// My courses for a semester (the current semester by default), including meetings.
 router.get('/me', async (req, res) => {
   const [[sem]] = req.query.semester_id
     ? await db.query('SELECT *, (CURDATE() BETWEEN registration_start AND registration_end) AS registration_open FROM semesters WHERE id = ?', [req.query.semester_id])
@@ -22,7 +23,7 @@ router.get('/me', async (req, res) => {
      JOIN course_offerings o ON o.id = e.offering_id
      JOIN courses c ON c.id = o.course_id
      JOIN users u ON u.id = o.instructor_id
-     WHERE e.student_id = ? AND o.semester_id = ? AND e.status = 'enrolled'
+     WHERE e.student_id = ? AND o.semester_id = ? AND ${occupying('e.status')}
      ORDER BY c.code`,
     [req.user.id, sem.id]
   );

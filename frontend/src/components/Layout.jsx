@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import Brand from './Brand';
 import LanguageSwitcher from './LanguageSwitcher';
+import ThemeSwitcher from './ThemeSwitcher';
 
 const links = {
   student: [
@@ -25,7 +26,7 @@ export default function Layout() {
   const location = useLocation();
   const [summary, setSummary] = useState({ notifications: 0, messages: 0 });
 
-  // عدّاد الإشعارات والرسائل (يتحدث كل 30 ثانية وعند تغيير الصفحة)
+  // Notification and message counts. Refresh every 30 seconds and on navigation.
   useEffect(() => {
     let alive = true;
     const load = () => api.get('/notifications/summary').then((r) => alive && setSummary(r.data)).catch(() => {});
@@ -41,6 +42,7 @@ export default function Layout() {
       <header className="navbar no-print">
         <Brand />
         <div className="navbar-user">
+          <ThemeSwitcher />
           <LanguageSwitcher />
           <NavLink to="/notifications" className="icon-link" title={t('nav.notifications')}>
             🔔{summary.notifications > 0 && <span className="count">{summary.notifications}</span>}

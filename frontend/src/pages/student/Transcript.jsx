@@ -1,12 +1,13 @@
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import Brand from '../../components/Brand';
-import { Loading } from '../../components/ui';
+import { LoadError, Loading, Tag } from '../../components/ui';
 
 export default function Transcript() {
   const { t, pick } = useLanguage();
-  const { data, loading } = useFetch('/student/transcript');
-  if (loading || !data) return <Loading />;
+  const { data, error, loading, reload } = useFetch('/student/transcript');
+  if (loading) return <Loading />;
+  if (error || data == null) return <LoadError error={error} onRetry={reload} />;
   const { student: s, semesters, standing } = data;
 
   return (
@@ -36,8 +37,10 @@ export default function Transcript() {
               <thead><tr><th>{t('col.code')}</th><th>{t('col.course')}</th><th>{t('col.credits')}</th><th>{t('grade.total')}</th><th>{t('grade.letter')}</th><th>{t('grade.points')}</th></tr></thead>
               <tbody>
                 {sem.courses.map((c) => (
-                  <tr key={c.code}>
-                    <td><strong>{c.code}</strong></td><td>{pick(c.name_ar, c.name_en)}</td><td>{c.credit_hours}</td>
+                  <tr key={c.enrollment_id} className={c.replaced ? 'replaced' : undefined}>
+                    <td><strong>{c.code}</strong></td>
+                    <td>{pick(c.name_ar, c.name_en)} {c.replaced && <Tag kind="muted">{t('grade.replaced')}</Tag>}</td>
+                    <td>{c.credit_hours}</td>
                     <td>{c.total}</td><td>{c.letter}</td><td>{Number(c.points).toFixed(1)}</td>
                   </tr>
                 ))}
@@ -49,6 +52,10 @@ export default function Transcript() {
           </p>
         </div>
       ))}
+
+      {semesters.some((sem) => sem.courses.some((c) => c.replaced)) && (
+        <p className="small muted gap-top">{t('transcript.repeatNote')}</p>
+      )}
 
       <div className="summary-box gap-top">
         <div>{t('stat.cgpa')}: <strong>{standing.cgpa?.toFixed(2) ?? '—'}</strong></div>

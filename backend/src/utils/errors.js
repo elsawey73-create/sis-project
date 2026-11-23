@@ -1,4 +1,4 @@
-// خطأ بنرميه من أي مكان، والـ error handler في server.js بيحوّله لرد JSON
+// Thrown from route code. The error handler in server.js turns it into JSON.
 class HttpError extends Error {
   constructor(status, code, details) {
     super(code);

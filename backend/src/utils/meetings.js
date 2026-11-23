@@ -4,7 +4,7 @@ const { HttpError } = require('./errors');
 const DAYS = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu'];
 const TYPES = ['lecture', 'section', 'lab'];
 
-// يضيف مواعيد المحاضرات لكل صف (offering)
+// Attach each offering's meeting rows.
 async function attachMeetings(rows, idField = 'id') {
   const ids = rows.map((r) => r[idField]);
   const map = {};

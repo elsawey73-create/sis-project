@@ -1,11 +1,12 @@
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
-import { Alert, Loading, Tag } from '../../components/ui';
+import { Alert, LoadError, Loading, Tag } from '../../components/ui';
 
 export default function Attendance() {
   const { t, pick } = useLanguage();
-  const { data, loading } = useFetch('/attendance/me');
-  if (loading || !data) return <Loading />;
+  const { data, error, loading, reload } = useFetch('/attendance/me');
+  if (loading) return <Loading />;
+  if (error || data == null) return <LoadError error={error} onRetry={reload} />;
   return (
     <div className="card">
       <h2 className="m0">{t('nav.attendance')}</h2>

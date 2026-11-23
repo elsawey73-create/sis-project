@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 const { authenticate, authorize } = require('../middleware/auth');
 const { HttpError } = require('../utils/errors');
+const { occupying } = require('../domain/enrollment');
 
 const instructor = [authenticate, authorize('instructor')];
 const student = [authenticate, authorize('student')];
@@ -24,7 +25,7 @@ async function ownSession(req) {
 }
 const publicSession = ({ qr_secret, ...rest }) => rest;
 
-// الدكتور: فتح جلسة حضور (لو فيه جلسة مفتوحة للمادة بيرجّعها)
+// Instructor: open a session. If one is already open for this offering, return it.
 router.post('/sessions', instructor, async (req, res) => {
   const { offering_id, meeting_id } = req.body;
   if (!offering_id) throw new HttpError(400, 'MISSING_FIELDS');
@@ -32,21 +33,25 @@ router.post('/sessions', instructor, async (req, res) => {
   const [[open]] = await db.query("SELECT id FROM attendance_sessions WHERE offering_id = ? AND status = 'open'", [offering_id]);
   if (open) return res.json({ id: open.id });
   const [r] = await db.query(
-    'INSERT INTO attendance_sessions (offering_id, meeting_id, session_date, opened_by, qr_secret) VALUES (?,?,CURDATE(),?,?)',
+    `INSERT INTO attendance_sessions
+      (offering_id, meeting_id, session_date, opened_at, opened_by, qr_secret, status, token_ttl_seconds, late_after_minutes)
+     VALUES (?,?,CURDATE(),NOW(),?,?,'open',30,15)`,
     [offering_id, meeting_id || null, req.user.id, crypto.randomBytes(24).toString('hex')]
   );
   res.status(201).json({ id: r.insertId });
 });
 
-// توكن جديد للـ QR (الشاشة بتطلبه كل 20 ثانية)
+// New QR token. The screen requests another one every 20 seconds.
 router.get('/sessions/:id/token', instructor, async (req, res) => {
   const s = await ownSession(req);
   if (s.status !== 'open') throw new HttpError(400, 'SESSION_CLOSED');
-  const token = jwt.sign({ sid: s.id }, s.qr_secret, { expiresIn: s.token_ttl_seconds });
-  res.json({ session_id: s.id, token, expires_in: s.token_ttl_seconds });
+  const ttl = Number(s.token_ttl_seconds);
+  const expiresIn = Number.isFinite(ttl) && ttl > 0 ? Math.floor(ttl) : 30;
+  const token = jwt.sign({ sid: Number(s.id) }, s.qr_secret, { expiresIn });
+  res.json({ session_id: s.id, token, expires_in: expiresIn });
 });
 
-// تفاصيل الجلسة + حالة كل طالب
+// Session detail and each student's mark.
 router.get('/sessions/:id', instructor, async (req, res) => {
   const s = await ownSession(req);
   const [students] = await db.query(
@@ -56,7 +61,7 @@ router.get('/sessions/:id', instructor, async (req, res) => {
      JOIN users u ON u.id = e.student_id
      JOIN students st ON st.user_id = u.id
      LEFT JOIN attendance_records ar ON ar.session_id = ? AND ar.student_id = u.id
-     WHERE e.offering_id = ? AND e.status IN ('enrolled','completed','failed')
+     WHERE e.offering_id = ? AND ${occupying('e.status')}
      ORDER BY st.student_code`,
     [s.id, s.offering_id]
   );
@@ -70,7 +75,7 @@ router.post('/sessions/:id/close', instructor, async (req, res) => {
   res.json({ ok: true });
 });
 
-// تسجيل/تعديل يدوي لطالب
+// Manual mark or correction for one student.
 router.put('/sessions/:id/students/:studentId', instructor, async (req, res) => {
   const s = await ownSession(req);
   const { status } = req.body;
@@ -79,7 +84,7 @@ router.put('/sessions/:id/students/:studentId', instructor, async (req, res) => 
     await db.query('DELETE FROM attendance_records WHERE session_id = ? AND student_id = ?', [s.id, req.params.studentId]);
   } else {
     const [[enr]] = await db.query(
-      "SELECT id FROM enrollments WHERE student_id = ? AND offering_id = ? AND status IN ('enrolled','completed','failed')",
+      `SELECT id FROM enrollments WHERE student_id = ? AND offering_id = ? AND ${occupying('status')}`,
       [req.params.studentId, s.offering_id]
     );
     if (!enr) throw new HttpError(403, 'NOT_ENROLLED');
@@ -92,7 +97,7 @@ router.put('/sessions/:id/students/:studentId', instructor, async (req, res) => 
   res.json({ ok: true });
 });
 
-// سجل جلسات مادة
+// Session history for one offering.
 router.get('/offering/:id/sessions', instructor, async (req, res) => {
   await ownOfferingId(req.params.id, req.user.id);
   const [rows] = await db.query(
@@ -104,7 +109,7 @@ router.get('/offering/:id/sessions', instructor, async (req, res) => {
   res.json(rows);
 });
 
-// الطالب: مسح الـ QR
+// Student: scan the QR.
 router.post('/scan', student, async (req, res) => {
   const { session_id, token } = req.body;
   if (!session_id || !token) throw new HttpError(400, 'MISSING_FIELDS');
@@ -119,20 +124,22 @@ router.post('/scan', student, async (req, res) => {
 
   try {
     const p = jwt.verify(token, s.qr_secret);
-    if (p.sid !== s.id) throw new Error('mismatch');
+    if (Number(p.sid) !== Number(s.id)) throw new Error('mismatch');
   } catch {
     throw new HttpError(400, 'QR_EXPIRED');
   }
 
   const [[enr]] = await db.query(
-    "SELECT id FROM enrollments WHERE student_id = ? AND offering_id = ? AND status = 'enrolled'",
+    `SELECT id FROM enrollments WHERE student_id = ? AND offering_id = ? AND ${occupying('status')}`,
     [req.user.id, s.offering_id]
   );
   if (!enr) throw new HttpError(403, 'NOT_ENROLLED');
 
-  const status = s.minutes > s.late_after_minutes ? 'late' : 'present';
+  const minutes = Number(s.minutes);
+  const lateAfter = Number(s.late_after_minutes);
+  const status = Number.isFinite(minutes) && Number.isFinite(lateAfter) && minutes > lateAfter ? 'late' : 'present';
   try {
-    await db.query('INSERT INTO attendance_records (session_id, student_id, status) VALUES (?,?,?)', [s.id, req.user.id, status]);
+    await db.query("INSERT INTO attendance_records (session_id, student_id, status, method) VALUES (?,?,?, 'qr')", [s.id, req.user.id, status]);
   } catch (e) {
     if (e.code === 'ER_DUP_ENTRY') throw new HttpError(409, 'ALREADY_RECORDED');
     throw e;
@@ -140,7 +147,7 @@ router.post('/scan', student, async (req, res) => {
   res.json({ status, course: { code: s.code, name_ar: s.name_ar, name_en: s.name_en } });
 });
 
-// الطالب: حضوري في مواد الترم الحالي
+// Student: attendance for occupying courses in the current term.
 router.get('/me', student, async (req, res) => {
   const [rows] = await db.query(
     `SELECT o.id AS offering_id, c.code, c.name_ar, c.name_en,
@@ -151,7 +158,7 @@ router.get('/me', student, async (req, res) => {
      JOIN course_offerings o ON o.id = e.offering_id
      JOIN courses c ON c.id = o.course_id
      JOIN semesters sm ON sm.id = o.semester_id AND sm.is_current = 1
-     WHERE e.student_id = ? AND e.status = 'enrolled' ORDER BY c.code`,
+     WHERE e.student_id = ? AND ${occupying('e.status')} ORDER BY c.code`,
     [req.user.id]
   );
   rows.forEach((r) => {

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../api/axios';
 
-// GET بسيط: يرجّع { data, error, loading, reload }
+// Simple GET. Returns { data, error, loading, reload }.
 export default function useFetch(url) {
   const [data, setData] = useState(null);
   const [error, setError] = useState(null);
@@ -9,7 +9,12 @@ export default function useFetch(url) {
   const [tick, setTick] = useState(0);
 
   useEffect(() => {
-    if (!url) return undefined;
+    if (!url) {
+      setData(null);
+      setError(null);
+      setLoading(false);
+      return undefined;
+    }
     let alive = true;
     setLoading(true);
     api

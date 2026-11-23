@@ -2,7 +2,7 @@ import { useState } from 'react';
 import api from '../../api/axios';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
-import { Alert, Field, Loading, Tag } from '../../components/ui';
+import { Alert, FetchBody, Field, LoadError, Loading, Tag } from '../../components/ui';
 import { DAYS, errorText, hhmm } from '../../utils/format';
 
 const emptySem = { name_ar: '', name_en: '', start_date: '', end_date: '', registration_start: '', registration_end: '', is_current: false };
@@ -43,6 +43,7 @@ export default function AdminOfferings() {
   const setS = (k) => (e) => setSem({ ...sem, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
 
   if (sems.loading) return <Loading />;
+  if (sems.error || sems.data == null) return <LoadError error={sems.error} onRetry={sems.reload} />;
 
   return (
     <>
@@ -68,9 +69,11 @@ export default function AdminOfferings() {
             </div>
           </form>
         )}
+        <div className="table-wrap">
         <table className="table">
           <thead><tr><th>{t('col.semester')}</th><th>{t('sem.regWindow')}</th><th /></tr></thead>
           <tbody>
+            {sems.data.length === 0 && <tr><td colSpan={3} className="muted">{t('reg.none')}</td></tr>}
             {sems.data.map((s) => (
               <tr key={s.id}>
                 <td>{pick(s.name_ar, s.name_en)} {s.is_current ? <Tag kind="ok">{t('sem.current')}</Tag> : null}</td>
@@ -80,6 +83,7 @@ export default function AdminOfferings() {
             ))}
           </tbody>
         </table>
+        </div>
       </div>
 
       <div className="card gap-top">
@@ -130,12 +134,17 @@ export default function AdminOfferings() {
           </form>
         )}
 
-        {offers.loading ? <Loading /> : (
+        {(courses.error || instructors.error) && (
+          <LoadError error={courses.error || instructors.error} onRetry={() => { courses.reload(); instructors.reload(); }} />
+        )}
+        <FetchBody loading={offers.loading} error={offers.error} data={offers.data} onRetry={offers.reload}>
+          {(list) => (
           <div className="table-wrap">
             <table className="table">
               <thead><tr><th>{t('col.code')}</th><th>{t('col.course')}</th><th>{t('off.section')}</th><th>{t('col.instructor')}</th><th>{t('col.schedule')}</th><th>{t('col.seats')}</th><th /></tr></thead>
               <tbody>
-                {(offers.data || []).map((o) => (
+                {list.length === 0 && <tr><td colSpan={7} className="muted">{t('reg.none')}</td></tr>}
+                {list.map((o) => (
                   <tr key={o.id}>
                     <td><strong>{o.code}</strong></td><td>{pick(o.name_ar, o.name_en)}</td><td>{o.section}</td>
                     <td>{pick(o.instructor_ar, o.instructor_en)}</td>
@@ -150,7 +159,8 @@ export default function AdminOfferings() {
               </tbody>
             </table>
           </div>
-        )}
+          )}
+        </FetchBody>
       </div>
     </>
   );

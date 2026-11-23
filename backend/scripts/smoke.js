@@ -1,4 +1,6 @@
-// اختبار سريع للـ API كله: npm run test:api (السيرفر لازم يكون شغال + seed اتعمل على داتابيز جديدة)
+// Mutating API check: grades, users, courses, and the registration window.
+// Run it only against a disposable database that was just seeded: npm run test:api
+// The API process must already be listening.
 const BASE = process.env.API || 'http://localhost:5000/api';
 let pass = 0, fail = 0;
 const ok = (name, cond, extra = '') => { cond ? pass++ : fail++; console.log(`${cond ? 'PASS' : 'FAIL'}  ${name} ${cond ? '' : extra}`); };
@@ -12,6 +14,8 @@ const login = async (id, pw) => (await call('POST', '/auth/login', null, { login
 const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.toISOString().slice(0, 10); };
 
 (async () => {
+  console.log('WARNING: this script changes grades, users, courses, and the registration window.');
+  console.log('Point it only at a disposable database that was just seeded.');
   const admin = await login('admin', 'Admin@123');
   const doc = await login('D1001', 'Doctor@123');
   const amr = await login('20250001', 'Student@123');
@@ -20,13 +24,13 @@ const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.
   ok('wrong password rejected', (await call('POST', '/auth/login', null, { login_id: 'admin', password: 'x' })).status === 401);
   ok('student blocked from admin route', (await call('GET', '/admin/stats', amr)).status === 403);
 
-  // ---- الكتالوج ----
+  // ---- Catalog ----
   const courses = (await call('GET', '/courses', amr)).data;
   ok('catalog has 12 courses', courses.length === 12);
   ok('CS301 has 2 prerequisites', courses.find((c) => c.code === 'CS301').prerequisites.length === 2);
   ok('search works', (await call('GET', '/courses?q=Calculus', amr)).data.length === 2);
 
-  // ---- التسجيل ----
+  // ---- Registration ----
   const offs = (await call('GET', '/offerings', amr)).data;
   const off = (code) => offs.find((o) => o.code === code);
   ok('9 offerings in current semester', offs.length === 9);
@@ -54,13 +58,13 @@ const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.
   r = await call('POST', '/enrollments', amr, { offering_id: off('MTH102').id });
   ok('re-register after drop', r.status === 201);
 
-  // ---- GPA / ترانسكريبت قبل الدرجات الجديدة ----
+  // ---- GPA and transcript before the new grades ----
   let sum = (await call('GET', '/student/summary', amr)).data;
-  ok('CGPA = 3.32, 11 credits earned', sum.standing.cgpa === 3.32 && sum.standing.credits_earned === 11, JSON.stringify(sum.standing));
+  ok('CGPA = 3.32, 11 credits earned', sum.standing.cgpa === 3.32 && sum.standing.credits_earned === 11, JSON.stringify(sum.standing)); // one attempt per course, so replacement does not change this
   let tr = (await call('GET', '/student/transcript', amr)).data;
   ok('transcript: 1 semester (Spring) GPA 3.32', tr.semesters.length === 1 && tr.semesters[0].gpa === 3.32, JSON.stringify(tr.semesters.map((s) => s.gpa)));
 
-  // ---- الدكتور: درجات ----
+  // ---- Instructor grades ----
   const myOffs = (await call('GET', '/instructor/offerings', doc)).data;
   const csOff = myOffs.find((o) => o.code === 'CS102');
   ok('doctor sees CS102 with 1 student', csOff && csOff.enrolled_count === 1);
@@ -71,7 +75,7 @@ const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.
   r = await call('PUT', `/instructor/offerings/${csOff.id}/grades`, doc, { grades: [{ enrollment_id: roster.students[0].enrollment_id, coursework: 18, midterm: 17, practical: 9, final_exam: 45 }] });
   ok('save grades', r.data.saved === 1, JSON.stringify(r.data));
   ok('student cannot see unpublished grade', (await call('GET', '/student/grades', amr)).data.every((g) => g.code !== 'CS102'));
-  // ---- الحضور بالـ QR ----
+  // ---- QR attendance ----
   r = await call('POST', '/attendance/sessions', doc, { offering_id: csOff.id });
   const sid = r.data.id;
   ok('open attendance session', r.status === 201 && sid);
@@ -90,13 +94,13 @@ const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.
   ok('scan after close rejected', (await call('POST', '/attendance/scan', amr, { session_id: sid, token: tok })).data.error === 'SESSION_CLOSED');
   const att = (await call('GET', '/attendance/me', amr)).data.find((a) => a.code === 'CS102');
   ok('my attendance 1/1, no warning', att.total_sessions === 1 && att.attended === 1 && !att.warning, JSON.stringify(att));
-  // جلسة تانية: غياب → تحذير
+  // Second session with no scan, so the absence warning fires.
   const sid2 = (await call('POST', '/attendance/sessions', doc, { offering_id: csOff.id })).data.id;
   await call('POST', `/attendance/sessions/${sid2}/close`, doc);
   const att2 = (await call('GET', '/attendance/me', amr)).data.find((a) => a.code === 'CS102');
   ok('absence 50% triggers warning', att2.warning === true && att2.absent_pct === 50, JSON.stringify(att2));
 
-  // ---- نشر الدرجات (بعد الحضور) ----
+  // ---- Publish grades (after attendance) ----
   r = await call('POST', `/instructor/offerings/${csOff.id}/grades/publish`, doc);
   ok('publish grades', r.data.published === 1, JSON.stringify(r.data));
   const g = (await call('GET', '/student/grades', amr)).data.find((x) => x.code === 'CS102');
@@ -108,7 +112,7 @@ const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.
   ok('CS201 now allowed (prereq passed)', r.status === 201, JSON.stringify(r.data));
   ok('student got grades notification', (await call('GET', '/notifications', amr)).data.some((n) => n.type === 'grades_published'));
 
-  // ---- الرسائل ----
+  // ---- Messages ----
   const contacts = (await call('GET', '/messages/contacts', amr)).data;
   ok('student can message his doctors', contacts.some((c) => c.role === 'instructor'));
   const d1 = contacts.find((c) => c.course_code === 'CS102');
@@ -127,7 +131,7 @@ const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.
   ok('student sees 2 messages', conv.messages.length === 2);
   ok('outsider cannot open thread', (await call('GET', `/messages/threads/${tid}`, sara)).status === 404);
 
-  // ---- الأدمن ----
+  // ---- Admin ----
   const st = (await call('GET', '/admin/stats', admin)).data;
   ok('admin stats', st.students === 2 && st.instructors === 2 && st.courses === 12, JSON.stringify(st));
   r = await call('POST', '/admin/users', admin, { login_id: 'D2001', password: 'Pass1234', full_name_ar: 'د. جديد', full_name_en: 'Dr. New', role: 'instructor', department_id: 1 });
@@ -146,19 +150,19 @@ const day = (n) => { const d = new Date(); d.setDate(d.getDate() + n); return d.
   ok('admin creates offering (capacity 1)', r.status === 201, JSON.stringify(r.data));
   const small = r.data.id;
   ok('Sara registers in tiny section', (await call('POST', '/enrollments', sara, { offering_id: small })).data.error === 'COURSE_ALREADY_IN_SEMESTER');
-  // سعة: مادة جديدة (من غير متطلبات) سعتها 1
+  // Capacity: a new course with no prerequisites and one seat.
   const cid = (await call('POST', '/courses', admin, { code: 'GEN900', name_ar: 'مادة اختبار', name_en: 'Capacity Test', credit_hours: 1, department_id: cs101.department_id })).data.id;
   const tiny = (await call('POST', '/offerings', admin, { course_id: cid, semester_id: fall.id, instructor_id: ins[0].id, section: '1', capacity: 1, meetings: [] })).data.id;
   ok('first student takes the only seat', (await call('POST', '/enrollments', sara, { offering_id: tiny })).status === 201);
   r = await call('POST', '/enrollments', amr, { offering_id: tiny });
   ok('section full for second student', r.data.error === 'SECTION_FULL', JSON.stringify(r.data));
 
-  // ---- قفل التسجيل ----
+  // ---- Close registration ----
   await call('PUT', '/semesters/' + fall.id, admin, { ...fall, registration_end: day(-1), is_current: true });
   r = await call('POST', '/enrollments', amr, { offering_id: off('IS210').id });
   ok('registration closed after window', r.data.error === 'REGISTRATION_CLOSED', JSON.stringify(r.data));
-  const enr = (await call('GET', '/enrollments/me', amr)).data.courses[0];
-  ok('drop also blocked when closed', (await call('DELETE', '/enrollments/' + enr.enrollment_id, amr)).data.error === 'REGISTRATION_CLOSED');
+  const enr = (await call('GET', '/enrollments/me', amr)).data.courses.find((c) => c.status === 'enrolled');
+  ok('drop also blocked when closed', !!enr && (await call('DELETE', '/enrollments/' + enr.enrollment_id, amr)).data.error === 'REGISTRATION_CLOSED');
 
   console.log(`\n${pass} passed, ${fail} failed`);
   process.exit(fail ? 1 : 0);

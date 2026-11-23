@@ -1,0 +1,90 @@
+Term	Code	Name	Grade	Hours	QualityPoints
+Fall-2019	BSE101	Mathematics (1)	B-	3	8.10
+Fall-2019	BSE103	Physics (1)	D+	3	3.90
+Fall-2019	BSE105	Mechanics (1)	C+	3	6.90
+Fall-2019	BSE107	Engineering Drawing and Projection	A	3	12.00
+Fall-2019	BSE108	Engineering Chemistry	F	3	0.00
+Spring-2020	BSE102	Mathematics (2)	PP	3	0.00
+Spring-2020	BSE104	Physics (2)	PP	3	0.00
+Spring-2020	BSE106	Mechanics (2)	PP	3	0.00
+Spring-2020	BSE109	Production Technology	PP	3	0.00
+Spring-2020	HUM101	Introduction to Engineering and Technology	PP	3	0.00
+Spring-2020	LNG101	English Language (1)	PP	3	0.00
+Fall-2020	BSE201	Mathematics (3)	F	3	0.00
+Fall-2020	BSE204	Physics (3)	D	3	3.00
+Fall-2020	CSE201	Computer Programming I	D	3	3.00
+Fall-2020	ECE201	Electronic Circuits I	C+	2	4.60
+Fall-2020	EEP201	Practical Applications in Electrical Engineering I	A+	2	8.00
+Fall-2020	EPC201	Electric Circuits I	C-	2	3.40
+Fall-2020	HUM308	Technical report writing	C+	3	6.90
+Spring-2021	BSE202	Mathematics (4)	F	3	0.00
+Spring-2021	CSE202	Logic Design I	B-	2	5.40
+Spring-2021	EEG201	Introduction Engineering Disciplines	A-	3	11.10
+Spring-2021	EEP202	Practical Applications in Electrical Engineering II	A+	2	8.00
+Spring-2021	EPC202	Electric Circuits II	C-	2	3.40
+Spring-2021	EPC203	Measurements I	D+	3	3.90
+Spring-2021	LNG102	English Language (2)	B	3	9.00
+Summer-2021	BSE202	Mathematics (4)	F	3	0.00
+Fall-2021	BSE201	Mathematics (3)	B-	3	8.10
+Fall-2021	CSE301	Computer Programming II	F	3	0.00
+Fall-2021	ECE301	Electronic Circuits II	A	2	8.00
+Fall-2021	ECE303	Signal analysis	D	3	3.00
+Fall-2021	EEP303	Practical Applications in Electrical Engineering III	A+	2	8.00
+Fall-2021	EPC302	Electromagnetic Fields (EPC)	D	2	2.00
+Fall-2021	HUM310	Scientific Research I	A+	3	12.00
+Spring-2022	BSE203	Probability and Statistics	C	3	6.00
+Spring-2022	CSE303	Logic design II	C	2	4.00
+Spring-2022	EEP304	Practical Applications in Electrical Engineering IV	A+	2	8.00
+Spring-2022	EPC301	Electrical Machines I	F	3	0.00
+Spring-2022	EPC303	Energy Conversion	F	3	0.00
+Spring-2022	EPC402	Control I	F	2	0.00
+Spring-2022	HUM311	Scientific Research II	A+	3	12.00
+Fall-2022	BSE205	Mathematics (5)	F	3	0.00
+Fall-2022	BSE301	Numerical Analysis	C-	3	5.10
+Fall-2022	CSE301	Computer Programming II	D	3	3.00
+Fall-2022	ECE304	Electronic Circuits III	B-	2	5.40
+Fall-2022	ECE401	Microprocessor Systems Programming	C	2	4.00
+Fall-2022	EEP405	Practical Applications in Electrical Engineering 5	A+	2	8.00
+Fall-2022	HUM304	Communication Skills	C+	3	6.90
+Spring-2023	CSE404	Operating Systems	F	3	0.00
+Spring-2023	CSE405	Computer Networks 1	D+	3	3.90
+Spring-2023	CSE503	Machine intelligence	F	3	0.00
+Spring-2023	ECE404	Microprocessor Systems Design and Interfaicing	F	2	0.00
+Spring-2023	EEP406	Practical Applications in Electrical Engineering 6	A+	2	8.00
+Summer-2023	BSE202	Mathematics (4)	F	3	0.00
+Summer-2023	ECE402	Communications Engineering I	D	3	3.00
+Summer-2023	EPC402	Control I	F	2	0.00
+Fall-2023	BSE108	Engineering Chemistry	F	3	0.00
+Fall-2023	BSE205	Mathematics (5)	F	3	0.00
+Fall-2023	CSE302	Data structures and Algorithms	F	3	0.00
+Fall-2023	CSE509	Computer Networks 2	F	3	0.00
+Fall-2023	ECE406	Communications Engineering 2	F	3	0.00
+Fall-2023	EEP507	Graduation Project 1	UNKNOWN	3	0.00
+Spring-2024	BSE202	Mathematics (4)	F	3	0.00
+Spring-2024	CSE302	Data structures and Algorithms	F	3	0.00
+Spring-2024	CSE403	Computer Architecture	F	3	0.00
+Spring-2024	ECE406	Communications Engineering 2	F	3	0.00
+Summer-2024	BSE108	Engineering Chemistry	F	3	0.00
+Summer-2024	BSE205	Mathematics (5)	D	3	3.00
+Summer-2024	CSE506	Wireless Mobile Networks	D	3	3.00
+Summer-2025	BSE108	Engineering Chemistry	B-	3	8.10
+Summer-2025	CSE406	Design and Analysis of Algorithms	C-	2	3.40
+Summer-2025	CSE410	Information and Computer system Security	C+	3	6.90
+Fall-2025	CSE401	Software Engineering	W	3	0.00
+Fall-2025	CSE403	Computer Architecture	F	3	0.00
+Fall-2025	CSE501	Computer Graphics and Machine Interface	W	3	0.00
+Fall-2025	CSE502	Compilers and Interpreters	W	3	0.00
+Fall-2025	EPC402	Control I	F	2	0.00
+Spring-2026	CSE503	Machine intelligence	B-	3	8.10
+Spring-2026	CSE507	Image Processing and Computer Vision	B+	3	9.90
+Spring-2026	CSE509	Computer Networks 2	C+	3	6.90
+Spring-2026	ECE404	Microprocessor Systems Design and Interfaicing	F	2	0.00
+Spring-2026	ECE406	Communications Engineering 2	D+	3	3.90
+Summer-2026	BSE202	Mathematics (4)	F	3	0.00
+Summer-2026	CSE513	Selected Topics in Computer Engineering	F	3	0.00
+Summer-2026	ECE404	Microprocessor Systems Design and Interfaicing	F	2	0.00
+Fall-2026	CSE302	Data structures and Algorithms	UNKNOWN	3	0.00
+Fall-2026	CSE403	Computer Architecture	UNKNOWN	3	0.00
+Fall-2026	CSE513	Selected Topics in Computer Engineering	UNKNOWN	3	0.00
+Fall-2026	EEP507	Graduation Project 1	UNKNOWN	3	0.00
+Fall-2026	EPC402	Control I	UNKNOWN	2	0.00

@@ -2,7 +2,7 @@ import { useState } from 'react';
 import api from '../../api/axios';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
-import { Alert, Field, Loading } from '../../components/ui';
+import { Alert, FetchBody, Field, LoadError } from '../../components/ui';
 import { errorText } from '../../utils/format';
 
 const empty = { login_id: '', password: '', full_name_ar: '', full_name_en: '', email: '', role: 'student', department_id: '' };
@@ -33,6 +33,7 @@ export default function AdminUsers() {
         {!form && <button className="b b-primary" onClick={() => setForm(empty)}>+ {t('common.add')}</button>}
       </div>
       <Alert type={msg?.type}>{msg?.text}</Alert>
+      {depts.error && <LoadError error={depts.error} onRetry={depts.reload} />}
 
       {form && (
         <form className="form-grid" onSubmit={(e) => { e.preventDefault(); run(async () => { await api.post('/admin/users', form); setForm(null); }); }}>
@@ -67,12 +68,14 @@ export default function AdminUsers() {
         </select>
       </div>
 
-      {users.loading ? <Loading /> : (
+      <FetchBody loading={users.loading} error={users.error} data={users.data} onRetry={users.reload}>
+        {(list) => (
         <div className="table-wrap">
           <table className="table">
             <thead><tr><th>ID</th><th>{t('col.name')}</th><th>{t('users.role')}</th><th /></tr></thead>
             <tbody>
-              {(users.data || []).map((u) => (
+              {list.length === 0 && <tr><td colSpan={4} className="muted">{t('reg.none')}</td></tr>}
+              {list.map((u) => (
                 <tr key={u.id}>
                   <td><bdi>{u.login_id}</bdi></td><td>{pick(u.full_name_ar, u.full_name_en)}</td><td>{t('role.' + u.role)}</td>
                   <td>
@@ -86,7 +89,8 @@ export default function AdminUsers() {
             </tbody>
           </table>
         </div>
-      )}
+        )}
+      </FetchBody>
     </div>
   );
 }

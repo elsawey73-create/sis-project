@@ -4,6 +4,7 @@ import { useAuth, homeByRole } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import Brand from '../components/Brand';
 import LanguageSwitcher from '../components/LanguageSwitcher';
+import ThemeSwitcher from '../components/ThemeSwitcher';
 
 export default function Login() {
   const { user, login } = useAuth();
@@ -16,7 +17,7 @@ export default function Login() {
   const [errorCode, setErrorCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
-  // لو مسجّل دخول بالفعل
+  // Already signed in.
   if (user) return <Navigate to={dest || homeByRole[user.role]} replace />;
 
   async function handleSubmit(e) {
@@ -27,7 +28,7 @@ export default function Login() {
       const u = await login(loginId, password);
       navigate(dest || homeByRole[u.role], { replace: true });
     } catch (err) {
-      // بنخزّن كود الخطأ مش النص، عشان لو غيّر اللغة النص يتغير
+      // Store the error code, not the sentence, so a language switch can retranslate it.
       setErrorCode(err.response?.data?.error || 'NETWORK');
     } finally {
       setSubmitting(false);
@@ -38,6 +39,7 @@ export default function Login() {
     <div className="center">
       <form className="card login-card" onSubmit={handleSubmit}>
         <div className="login-top">
+          <ThemeSwitcher />
           <LanguageSwitcher />
         </div>
 

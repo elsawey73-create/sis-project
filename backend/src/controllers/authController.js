@@ -3,9 +3,11 @@ const jwt = require('jsonwebtoken');
 const db = require('../config/db');
 
 function signToken(user) {
-  return jwt.sign({ id: user.id, role: user.role }, process.env.JWT_SECRET, {
-    expiresIn: '7d',
-  });
+  return jwt.sign(
+    { id: user.id, role: user.role, tv: Number(user.token_version || 0) },
+    process.env.JWT_SECRET,
+    { expiresIn: '7d' }
+  );
 }
 
 function publicUser(u) {
@@ -19,55 +21,7 @@ function publicUser(u) {
   };
 }
 
-// POST /api/auth/register  (تسجيل طالب جديد - الـ ID هو الرقم الجامعي)
-exports.register = async (req, res) => {
-  const { full_name_ar, full_name_en, student_code, password, department_id, email } = req.body;
-
-  if (!full_name_ar || !student_code || !password || !department_id) {
-    return res.status(400).json({ error: 'MISSING_FIELDS' });
-  }
-  if (password.length < 6) {
-    return res.status(400).json({ error: 'WEAK_PASSWORD' });
-  }
-
-  const loginId = String(student_code).trim();
-  const conn = await db.getConnection();
-  try {
-    await conn.beginTransaction();
-
-    const hash = await bcrypt.hash(password, 10);
-    const [u] = await conn.query(
-      `INSERT INTO users (login_id, password_hash, full_name_ar, full_name_en, email, role)
-       VALUES (?,?,?,?,?,?)`,
-      [
-        loginId,
-        hash,
-        full_name_ar.trim(),
-        full_name_en ? full_name_en.trim() : null,
-        email ? email.toLowerCase().trim() : null,
-        'student',
-      ]
-    );
-
-    await conn.query(
-      'INSERT INTO students (user_id, student_code, department_id, level, admission_year) VALUES (?,?,?,?,?)',
-      [u.insertId, loginId, department_id, 1, new Date().getFullYear()]
-    );
-
-    await conn.commit();
-    res.status(201).json({ message: 'CREATED' });
-  } catch (err) {
-    await conn.rollback();
-    if (err.code === 'ER_DUP_ENTRY') return res.status(409).json({ error: 'DUPLICATE_USER' });
-    if (err.code === 'ER_NO_REFERENCED_ROW_2') return res.status(400).json({ error: 'DEPT_NOT_FOUND' });
-    console.error(err);
-    res.status(500).json({ error: 'SERVER_ERROR' });
-  } finally {
-    conn.release();
-  }
-};
-
-// POST /api/auth/login  (بالـ ID مش بالإيميل)
+// POST /api/auth/login. The identifier is login_id, not email.
 exports.login = async (req, res) => {
   const { login_id, password } = req.body;
   if (!login_id || !password) {
@@ -79,7 +33,7 @@ exports.login = async (req, res) => {
   ]);
   const user = rows[0];
 
-  // نفس الرد للحالتين عشان محدش يعرف إن الـ ID موجود
+  // Same response for an unknown id and a wrong password.
   const ok = user && (await bcrypt.compare(password, user.password_hash));
   if (!ok) return res.status(401).json({ error: 'INVALID_CREDENTIALS' });
 
@@ -113,7 +67,13 @@ exports.me = async (req, res) => {
   res.json(user);
 };
 
-// PATCH /api/auth/language  (حفظ لغة المستخدم في الداتابيز)
+// POST /api/auth/logout. Invalidates every open session for this account.
+exports.logout = async (req, res) => {
+  await db.query('UPDATE users SET token_version = token_version + 1 WHERE id = ?', [req.user.id]);
+  res.json({ ok: true });
+};
+
+// PATCH /api/auth/language. Stores the user's language.
 exports.setLanguage = async (req, res) => {
   const { lang } = req.body;
   if (!['ar', 'en'].includes(lang)) {

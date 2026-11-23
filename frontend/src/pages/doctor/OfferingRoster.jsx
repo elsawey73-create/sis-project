@@ -3,7 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import api from '../../api/axios';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
-import { Alert, Loading, Tag } from '../../components/ui';
+import { Alert, LoadError, Loading, Tag } from '../../components/ui';
 import { errorText, gradeTotal } from '../../utils/format';
 
 const KEYS = ['coursework', 'midterm', 'practical', 'final_exam'];
@@ -11,12 +11,13 @@ const KEYS = ['coursework', 'midterm', 'practical', 'final_exam'];
 export default function OfferingRoster() {
   const { id } = useParams();
   const { t, pick } = useLanguage();
-  const { data, loading, reload } = useFetch(`/instructor/offerings/${id}/roster`);
+  const { data, error, loading, reload } = useFetch(`/instructor/offerings/${id}/roster`);
   const sessions = useFetch(`/attendance/offering/${id}/sessions`);
   const [edits, setEdits] = useState({});
   const [msg, setMsg] = useState(null);
 
-  if (loading || !data) return <Loading />;
+  if (loading) return <Loading />;
+  if (error || data == null) return <LoadError error={error} onRetry={reload} />;
   const { offering, max, students, total_sessions } = data;
   const hasPrac = !!offering.has_practical;
   const val = (s, k) => edits[s.enrollment_id]?.[k] ?? s[k] ?? '';
@@ -98,18 +99,22 @@ export default function OfferingRoster() {
 
       <div className="card gap-top">
         <h3 className="m0">{t('att.history')}</h3>
-        <table className="table">
-          <thead><tr><th>#</th><th>{t('att.date')}</th><th>{t('att.attended')}</th><th /></tr></thead>
-          <tbody>
-            {(sessions.data || []).length === 0 && <tr><td colSpan={4} className="muted">—</td></tr>}
-            {(sessions.data || []).map((s) => (
-              <tr key={s.id}>
-                <td>{s.id}</td><td>{s.session_date}</td><td>{s.present_count}</td>
-                <td><Link to={`/doctor/attendance/${s.id}`}>{s.status === 'open' ? t('att.live') : t('att.view')}</Link></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        {sessions.loading ? <Loading /> : sessions.error || sessions.data == null ? <LoadError error={sessions.error} onRetry={sessions.reload} /> : (
+          <div className="table-wrap">
+            <table className="table">
+              <thead><tr><th>#</th><th>{t('att.date')}</th><th>{t('att.attended')}</th><th /></tr></thead>
+              <tbody>
+                {sessions.data.length === 0 && <tr><td colSpan={4} className="muted">{t('reg.none')}</td></tr>}
+                {sessions.data.map((s) => (
+                  <tr key={s.id}>
+                    <td>{s.id}</td><td>{s.session_date}</td><td>{s.present_count}</td>
+                    <td><Link to={`/doctor/attendance/${s.id}`}>{s.status === 'open' ? t('att.live') : t('att.view')}</Link></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
     </>
   );

@@ -1,11 +1,12 @@
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
-import { Loading } from '../../components/ui';
+import { LoadError, Loading, Tag } from '../../components/ui';
 
 export default function Grades() {
   const { t, pick } = useLanguage();
-  const { data, loading } = useFetch('/student/grades');
-  if (loading || !data) return <Loading />;
+  const { data, error, loading, reload } = useFetch('/student/grades');
+  if (loading) return <Loading />;
+  if (error || data == null) return <LoadError error={error} onRetry={reload} />;
   if (data.length === 0) return <div className="card"><p className="muted">{t('grades.none')}</p></div>;
 
   const groups = [];
@@ -28,8 +29,8 @@ export default function Grades() {
           </thead>
           <tbody>
             {g.rows.map((r) => (
-              <tr key={r.code}>
-                <td><strong>{r.code}</strong> {pick(r.name_ar, r.name_en)}</td>
+              <tr key={r.enrollment_id} className={r.replaced ? 'replaced' : undefined}>
+                <td><strong>{r.code}</strong> {pick(r.name_ar, r.name_en)} {r.replaced && <Tag kind="muted">{t('grade.replaced')}</Tag>}</td>
                 <td>{r.coursework}/{r.max.coursework}</td>
                 <td>{r.midterm}/{r.max.midterm}</td>
                 <td>{r.has_practical ? `${r.practical}/${r.max.practical}` : '—'}</td>

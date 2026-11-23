@@ -2,7 +2,7 @@ import { useState } from 'react';
 import api from '../../api/axios';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
-import { Alert, Loading, Tag } from '../../components/ui';
+import { Alert, FetchBody, LoadError, Tag } from '../../components/ui';
 import { errorText, hhmm } from '../../utils/format';
 
 export default function Registration() {
@@ -39,6 +39,8 @@ export default function Registration() {
   const meetingsText = (o) => o.meetings.map((m) => `${t('day.' + m.day_of_week)} ${hhmm(m.start_time)}–${hhmm(m.end_time)} (${m.room})`).join(' | ');
 
   function action(o) {
+    if (o.enrollment_status === 'completed') return <Tag kind="info">{t('reg.completed')}</Tag>;
+    if (o.enrollment_status === 'failed') return <Tag kind="err">{t('reg.failed')}</Tag>;
     if (o.enrolled) return <Tag kind="ok">{t('reg.registered')}</Tag>;
     if (o.passed) return <Tag kind="muted">{t('reg.passed')}</Tag>;
     if (o.prereq_missing?.length) return <Tag kind="warn">{t('reg.needs')}: {o.prereq_missing.join(', ')}</Tag>;
@@ -67,28 +69,34 @@ export default function Registration() {
 
       <div className="card gap-top">
         <h3 className="m0">{t('reg.myCourses')}</h3>
-        {mine.loading ? <Loading /> : (
+        <FetchBody loading={mine.loading} error={mine.error} data={mine.data} onRetry={mine.reload}>
+          {(enr) => (
           <>
             <div className="table-wrap">
               <table className="table">
                 <thead><tr><th>{t('col.code')}</th><th>{t('col.course')}</th><th>{t('col.credits')}</th><th>{t('col.schedule')}</th><th /></tr></thead>
                 <tbody>
-                  {mine.data.courses.length === 0 && <tr><td colSpan={5} className="muted">{t('reg.none')}</td></tr>}
-                  {mine.data.courses.map((c) => (
+                  {enr.courses.length === 0 && <tr><td colSpan={5} className="muted">{t('reg.none')}</td></tr>}
+                  {enr.courses.map((c) => (
                     <tr key={c.enrollment_id}>
                       <td><strong>{c.code}</strong></td>
                       <td>{pick(c.name_ar, c.name_en)}</td>
                       <td>{c.credit_hours}</td>
                       <td className="small">{meetingsText(c)}</td>
-                      <td><button className="btn-small" disabled={busy || !open} onClick={() => act(() => api.delete(`/enrollments/${c.enrollment_id}`), 'reg.dropped')}>{t('reg.drop')}</button></td>
+                      <td>
+                        {c.status === 'enrolled'
+                          ? <button className="btn-small" disabled={busy || !open} onClick={() => act(() => api.delete(`/enrollments/${c.enrollment_id}`), 'reg.dropped')}>{t('reg.drop')}</button>
+                          : <Tag kind={c.status === 'failed' ? 'err' : 'info'}>{t(c.status === 'failed' ? 'reg.failed' : 'reg.completed')}</Tag>}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             </div>
-            <p><strong>{t('reg.total')}: {mine.data.total_credits} / {mine.data.max_credits}</strong></p>
+            <p><strong>{t('reg.total')}: {enr.total_credits} / {enr.max_credits}</strong></p>
           </>
-        )}
+          )}
+        </FetchBody>
       </div>
 
       <div className="card gap-top">
@@ -100,14 +108,17 @@ export default function Registration() {
             {(depts.data || []).map((d) => <option key={d.id} value={d.id}>{pick(d.name_ar, d.name_en)}</option>)}
           </select>
         </div>
-        {offers.loading ? <Loading /> : (
+        {depts.error && <LoadError error={depts.error} onRetry={depts.reload} />}
+        <FetchBody loading={offers.loading} error={offers.error} data={offers.data} onRetry={offers.reload}>
+          {(list) => (
           <div className="table-wrap">
             <table className="table">
               <thead>
                 <tr><th>{t('col.code')}</th><th>{t('col.course')}</th><th>{t('col.credits')}</th><th>{t('col.instructor')}</th><th>{t('col.schedule')}</th><th>{t('col.seats')}</th><th /></tr>
               </thead>
               <tbody>
-                {(offers.data || []).map((o) => (
+                {list.length === 0 && <tr><td colSpan={7} className="muted">{t('reg.none')}</td></tr>}
+                {list.map((o) => (
                   <tr key={o.id}>
                     <td><strong>{o.code}</strong></td>
                     <td>{pick(o.name_ar, o.name_en)}</td>
@@ -121,7 +132,8 @@ export default function Registration() {
               </tbody>
             </table>
           </div>
-        )}
+          )}
+        </FetchBody>
       </div>
     </>
   );

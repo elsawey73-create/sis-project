@@ -1,5 +1,10 @@
-// بيجهّز بيانات تجريبية كاملة. شغّله مرة واحدة على داتابيز فاضية: npm run seed
+// Demo data for one empty local database. Run once: npm run seed
+// The passwords below are for local demos. The script exits when NODE_ENV=production.
 require('dotenv').config();
+if (process.env.NODE_ENV === 'production') {
+  console.error('Refusing to load demo accounts while NODE_ENV=production.');
+  process.exit(1);
+}
 const bcrypt = require('bcryptjs');
 const db = require('./config/db');
 const { gradeFromTotal, computeTotal } = require('./services/gpa');
@@ -20,7 +25,7 @@ async function user(loginId, ar, en, role, pw) {
 
 (async () => {
   try {
-    // ---------- الأقسام ----------
+    // ---------- Departments ----------
     const dept = {};
     for (const [code, ar, en] of [
       ['CS', 'علوم الحاسب', 'Computer Science'],
@@ -32,10 +37,10 @@ async function user(loginId, ar, en, role, pw) {
       dept[code] = r.insertId;
     }
 
-    // ---------- المقررات (مع المتطلبات السابقة) ----------
+    // ---------- Courses and prerequisites ----------
     const C = {}; // code -> {id, practical}
     const courses = [
-      // code, عربي, English, ساعات, قسم, عملي؟, متطلبات
+      // code, Arabic name, English name, credits, department, practical?, prerequisites
       ['ENG101', 'اللغة الإنجليزية 1', 'English Language 1', 2, 'GEN', 0, []],
       ['MTH101', 'تفاضل وتكامل 1', 'Calculus 1', 3, 'MTH', 0, []],
       ['MTH102', 'تفاضل وتكامل 2', 'Calculus 2', 3, 'MTH', 0, ['MTH101']],
@@ -61,7 +66,7 @@ async function user(loginId, ar, en, role, pw) {
       for (const p of pre)
         await db.query('INSERT INTO course_prerequisites (course_id, prerequisite_id) VALUES (?,?)', [C[code].id, C[p].id]);
 
-    // ---------- المستخدمين ----------
+    // ---------- Users ----------
     await user('admin', 'مدير النظام', 'System Admin', 'admin', 'Admin@123');
     const d1 = await user('D1001', 'د. أحمد محمد', 'Dr. Ahmed Mohamed', 'instructor', 'Doctor@123');
     const d2 = await user('D1002', 'د. منى سمير', 'Dr. Mona Samir', 'instructor', 'Doctor@123');
@@ -73,7 +78,7 @@ async function user(loginId, ar, en, role, pw) {
     await db.query('INSERT INTO students (user_id,student_code,department_id,level,admission_year) VALUES (?,?,?,?,?)', [amr, '20250001', dept.CS, 2, 2025]);
     await db.query('INSERT INTO students (user_id,student_code,department_id,level,admission_year) VALUES (?,?,?,?,?)', [sara, '20260001', dept.CS, 1, 2026]);
 
-    // ---------- الترمات ----------
+    // ---------- Semesters ----------
     const sem = async (ar, en, s, e, rs, re, cur) =>
       (await db.query(
         'INSERT INTO semesters (name_ar,name_en,start_date,end_date,registration_start,registration_end,is_current) VALUES (?,?,?,?,?,?,?)',
@@ -82,7 +87,7 @@ async function user(loginId, ar, en, role, pw) {
     const spring = await sem('ربيع 2026', 'Spring 2026', '2026-02-15', '2026-06-20', '2026-02-01', '2026-02-28', 0);
     const fall = await sem('خريف 2026', 'Fall 2026', '2026-09-20', '2027-01-20', iso(-30), iso(60), 1);
 
-    // ---------- المواد المطروحة + المواعيد ----------
+    // ---------- Offerings and meetings ----------
     const offer = async (code, semId, instr, meetings, capacity = 40) => {
       const [r] = await db.query(
         'INSERT INTO course_offerings (course_id,semester_id,instructor_id,section,capacity) VALUES (?,?,?,?,?)',
@@ -96,7 +101,7 @@ async function user(loginId, ar, en, role, pw) {
       return r.insertId;
     };
 
-    // الترم الماضي (الطالب عمرو خلّصه ودرجاته منشورة)
+    // Previous term. Amr completed it, and the grades are published.
     const past = {
       CS101: await offer('CS101', spring, d1, [['Sat', '09:00', '11:00', 'A1', 'lecture']]),
       MTH101: await offer('MTH101', spring, d2, [['Sun', '09:00', '11:00', 'B3', 'lecture']]),
@@ -119,7 +124,7 @@ async function user(loginId, ar, en, role, pw) {
       );
     }
 
-    // الترم الحالي (CS102 و MTH201 متعارضين عمداً يوم الأحد 9-11)
+    // Current term. CS102 and MTH201 overlap on purpose, Sunday 09:00–11:00.
     const f = {
       CS101: await offer('CS101', fall, d1, [['Sat', '09:00', '11:00', 'A1', 'lecture'], ['Mon', '11:00', '13:00', 'Lab1', 'lab']]),
       CS102: await offer('CS102', fall, d1, [['Sun', '09:00', '11:00', 'A2', 'lecture'], ['Tue', '11:00', '13:00', 'Lab2', 'lab']]),
@@ -131,7 +136,7 @@ async function user(loginId, ar, en, role, pw) {
       MTH201: await offer('MTH201', fall, d2, [['Sun', '09:00', '11:00', 'B2', 'lecture']]),
       ENG101: await offer('ENG101', fall, d2, [['Mon', '09:00', '11:00', 'C1', 'lecture']]),
     };
-    // سارة مسجّلة في مادتين عشان يبقى فيه طلاب عند الدكتور
+    // Sara is enrolled in two courses so the instructor roster is not empty.
     await db.query('INSERT INTO enrollments (student_id, offering_id) VALUES (?,?)', [sara, f.CS101]);
     await db.query('INSERT INTO enrollments (student_id, offering_id) VALUES (?,?)', [sara, f.ENG101]);
 
@@ -143,6 +148,7 @@ async function user(loginId, ar, en, role, pw) {
     console.log('  20260001  / Student@123  (Sara - new student)');
   } catch (e) {
     console.error('Seed failed:', e.message);
+    process.exit(1);
   }
-  process.exit();
+  process.exit(0);
 })();

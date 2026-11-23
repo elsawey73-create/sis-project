@@ -2,11 +2,12 @@ const router = require('express').Router();
 const db = require('../config/db');
 const { authenticate, authorize } = require('../middleware/auth');
 const { HttpError } = require('../utils/errors');
-const { getStanding, maxCredits, maxes } = require('../services/gpa');
+const { getStanding, standingFromAttempts, maxCredits, maxes, isPassOnly } = require('../services/gpa');
+const { occupying } = require('../domain/enrollment');
 
 router.use(authenticate, authorize('student'));
 
-// ملخص الداشبورد
+// Dashboard summary.
 router.get('/summary', async (req, res) => {
   const standing = await getStanding(db, req.user.id);
   const [[sem]] = await db.query(
@@ -17,7 +18,7 @@ router.get('/summary', async (req, res) => {
     const [[c]] = await db.query(
       `SELECT COUNT(*) AS courses, COALESCE(SUM(c.credit_hours), 0) AS credits
        FROM enrollments e JOIN course_offerings o ON o.id = e.offering_id JOIN courses c ON c.id = o.course_id
-       WHERE e.student_id = ? AND o.semester_id = ? AND e.status = 'enrolled'`,
+       WHERE e.student_id = ? AND o.semester_id = ? AND ${occupying('e.status')}`,
       [req.user.id, sem.id]
     );
     current = { courses: c.courses, credits: Number(c.credits) };
@@ -25,25 +26,30 @@ router.get('/summary', async (req, res) => {
   res.json({ standing, semester: sem || null, current, max_credits: maxCredits(standing) });
 });
 
-// الدرجات المنشورة بالتفصيل
+// Published grades, one row per course.
 router.get('/grades', async (req, res) => {
   const [rows] = await db.query(
-    `SELECT s.id AS semester_id, s.name_ar AS semester_ar, s.name_en AS semester_en, s.start_date,
-            c.code, c.name_ar, c.name_en, c.credit_hours, c.has_practical,
+    `SELECT e.id AS enrollment_id, c.id AS course_id, s.id AS semester_id, s.name_ar AS semester_ar,
+            s.name_en AS semester_en, s.start_date, c.code, c.name_ar, c.name_en, c.credit_hours, c.has_practical,
             g.coursework, g.midterm, g.practical, g.final_exam, g.total, g.letter, g.points
      FROM enrollments e
      JOIN course_offerings o ON o.id = e.offering_id
      JOIN semesters s ON s.id = o.semester_id
      JOIN courses c ON c.id = o.course_id
      JOIN grades g ON g.enrollment_id = e.id AND g.published = 1
-     WHERE e.student_id = ? ORDER BY s.start_date DESC, c.code`,
+     WHERE e.student_id = ? AND e.status IN ('completed','failed')
+     ORDER BY s.start_date DESC, c.code`,
     [req.user.id]
   );
-  rows.forEach((r) => (r.max = maxes(r.has_practical)));
+  const { countedIds } = standingFromAttempts(rows);
+  rows.forEach((r) => {
+    r.max = maxes(r.has_practical);
+    r.replaced = !countedIds.has(Number(r.enrollment_id));
+  });
   res.json(rows);
 });
 
-// الترانسكريبت الكامل: كل الترمات + GPA لكل ترم والتراكمي
+// Full transcript: every semester, plus semester GPA and the cumulative GPA.
 router.get('/transcript', async (req, res) => {
   const [[info]] = await db.query(
     `SELECT u.full_name_ar, u.full_name_en, st.student_code, st.level, st.admission_year,
@@ -55,17 +61,20 @@ router.get('/transcript', async (req, res) => {
   if (!info) throw new HttpError(404, 'NOT_FOUND');
 
   const [rows] = await db.query(
-    `SELECT s.id AS semester_id, s.name_ar AS semester_ar, s.name_en AS semester_en, s.start_date,
+    `SELECT e.id AS enrollment_id, c.id AS course_id, s.id AS semester_id,
+            s.name_ar AS semester_ar, s.name_en AS semester_en, s.start_date,
             c.code, c.name_ar, c.name_en, c.credit_hours, g.total, g.letter, g.points
      FROM enrollments e
      JOIN course_offerings o ON o.id = e.offering_id
      JOIN semesters s ON s.id = o.semester_id
      JOIN courses c ON c.id = o.course_id
      JOIN grades g ON g.enrollment_id = e.id AND g.published = 1
-     WHERE e.student_id = ? ORDER BY s.start_date, c.code`,
+     WHERE e.student_id = ? AND e.status IN ('completed','failed')
+     ORDER BY s.start_date, c.code`,
     [req.user.id]
   );
 
+  const repeat = standingFromAttempts(rows);
   const semesters = [];
   const byId = {};
   for (const r of rows) {
@@ -74,10 +83,23 @@ router.get('/transcript', async (req, res) => {
       semesters.push(byId[r.semester_id]);
     }
     const s = byId[r.semester_id];
-    s.courses.push({ code: r.code, name_ar: r.name_ar, name_en: r.name_en, credit_hours: r.credit_hours, total: r.total, letter: r.letter, points: r.points });
-    s._a += r.credit_hours;
-    s._q += r.credit_hours * Number(r.points);
-    if (Number(r.points) > 0) s._e += r.credit_hours;
+    const replaced = !repeat.countedIds.has(Number(r.enrollment_id));
+    s.courses.push({
+      enrollment_id: r.enrollment_id,
+      code: r.code,
+      name_ar: r.name_ar,
+      name_en: r.name_en,
+      credit_hours: r.credit_hours,
+      total: r.total,
+      letter: r.letter,
+      points: r.points,
+      replaced,
+    });
+    // Pass-only grades earn the hours but stay out of the term GPA.
+    if (isPassOnly(r.letter)) { s._e += Number(r.credit_hours); continue; }
+    s._a += Number(r.credit_hours);
+    s._q += Number(r.credit_hours) * Number(r.points);
+    if (Number(r.points) > 0) s._e += Number(r.credit_hours);
   }
   const round = (n) => Math.round(n * 100) / 100;
   semesters.forEach((s) => {
@@ -86,7 +108,11 @@ router.get('/transcript', async (req, res) => {
     s.credits_earned = s._e;
     delete s._q; delete s._a; delete s._e;
   });
-  res.json({ student: info, semesters, standing: await getStanding(db, req.user.id) });
+  res.json({
+    student: info,
+    semesters,
+    standing: { cgpa: repeat.cgpa, credits_attempted: repeat.credits_attempted, credits_earned: repeat.credits_earned },
+  });
 });
 
 module.exports = router;

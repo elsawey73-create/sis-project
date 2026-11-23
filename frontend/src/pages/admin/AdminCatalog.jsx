@@ -2,7 +2,7 @@ import { useState } from 'react';
 import api from '../../api/axios';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
-import { Alert, Field, Loading } from '../../components/ui';
+import { Alert, Field, LoadError, Loading } from '../../components/ui';
 import { errorText } from '../../utils/format';
 
 const emptyCourse = { code: '', name_ar: '', name_en: '', description_ar: '', description_en: '', credit_hours: 3, department_id: '', has_practical: false, prerequisites: [] };
@@ -13,7 +13,7 @@ export default function AdminCatalog() {
   const depts = useFetch('/departments');
   const courses = useFetch('/courses');
   const [dept, setDept] = useState(emptyDept);
-  const [course, setCourse] = useState(null); // null = مخفي
+  const [course, setCourse] = useState(null); // null hides the editor.
   const [editId, setEditId] = useState(null);
   const [msg, setMsg] = useState(null);
 
@@ -36,6 +36,9 @@ export default function AdminCatalog() {
   const set = (k) => (e) => setCourse({ ...course, [k]: e.target.type === 'checkbox' ? e.target.checked : e.target.value });
 
   if (depts.loading || courses.loading) return <Loading />;
+  if (depts.error || courses.error || depts.data == null || courses.data == null) {
+    return <LoadError error={depts.error || courses.error} onRetry={() => { depts.reload(); courses.reload(); }} />;
+  }
 
   return (
     <>
@@ -43,8 +46,10 @@ export default function AdminCatalog() {
 
       <div className="card">
         <h3 className="m0">{t('admin.departments')}</h3>
+        <div className="table-wrap">
         <table className="table">
           <tbody>
+            {depts.data.length === 0 && <tr><td className="muted">{t('reg.none')}</td></tr>}
             {depts.data.map((d) => (
               <tr key={d.id}>
                 <td><strong>{d.code}</strong></td><td>{d.name_ar}</td><td>{d.name_en}</td>
@@ -53,6 +58,7 @@ export default function AdminCatalog() {
             ))}
           </tbody>
         </table>
+        </div>
         <form className="toolbar inline" onSubmit={saveDept}>
           <input required placeholder="CS" value={dept.code} onChange={(e) => setDept({ ...dept, code: e.target.value })} />
           <input required placeholder={t('form.nameAr')} value={dept.name_ar} onChange={(e) => setDept({ ...dept, name_ar: e.target.value })} />
