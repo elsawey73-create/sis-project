@@ -8,7 +8,8 @@
     "start": "node src/server.js",
     "db:init": "node scripts/migrate.js",
     "seed": "node src/seed.js",
-    "test:api": "node scripts/smoke.js"
+    "test:api": "node scripts/smoke.js",
+    "test:reset": "node scripts/test-password-reset.js"
   },
   "keywords": [],
   "author": "",
@@ -20,7 +21,8 @@
     "dotenv": "^18.0.10",
     "express": "^5.3.0",
     "jsonwebtoken": "^9.0.3",
-    "mysql2": "^3.24.6"
+    "mysql2": "^3.24.6",
+    "resend": "^6.39.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.14"

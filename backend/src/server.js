@@ -3,6 +3,7 @@ const cors = require('cors');
 const { isProduction } = require('./config/env');
 const { authenticate, authorize } = require('./middleware/auth');
 const { HttpError } = require('./utils/errors');
+const { warnIfNoResendKey } = require('./services/mail');
 
 function assertRuntimeConfig() {
   if (!process.env.JWT_SECRET) {
@@ -29,6 +30,7 @@ function corsMiddleware() {
 }
 
 assertRuntimeConfig();
+warnIfNoResendKey();
 
 const app = express();
 app.use(corsMiddleware());

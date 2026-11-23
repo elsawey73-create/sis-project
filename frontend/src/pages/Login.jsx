@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { Link, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth, homeByRole } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import Brand from '../components/Brand';
@@ -76,6 +76,10 @@ export default function Login() {
         <button className="btn" disabled={submitting}>
           {submitting ? t('login.submitting') : t('login.submit')}
         </button>
+
+        <p className="center-text">
+          <Link to="/forgot-password">{t('login.forgot')}</Link>
+        </p>
       </form>
     </div>
   );

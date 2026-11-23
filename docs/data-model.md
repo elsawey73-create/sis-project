@@ -2,7 +2,7 @@
 
 ## Overview
 
-The application expects a MySQL database (default name `unidex_db`). A new database is created from `backend/sql/001_init.sql` by `npm run db:init`. That command also patches a database that already has tables: it adds `users.token_version` when the column is missing, and it sets the attendance timing defaults below.
+The application expects a MySQL database (default name `unidex_db`). A new database is created from `backend/sql/001_init.sql` by `npm run db:init`. That command also patches a database that already has tables: it adds `users.token_version` when the column is missing, and it sets the attendance timing defaults below. It then applies any later `backend/sql/NNN_*.sql` file that is not recorded in `schema_migrations`. `003_password_reset_tokens.sql` creates `password_reset_tokens`.
 
 `001_init.sql` is the contract for a new install. If `users` already exists, the runner does not rebuild the tables, so a database created before that file can still differ in types and foreign keys. The column list on this page matches both the SQL file and the queries.
 
@@ -39,10 +39,23 @@ Written by seed and `POST /api/admin/users`. There is no public signup route.
 | `email` | Optional. Stored lowercased and trimmed. Seed does not set it |
 | `role` | `'student'`, `'instructor'`, or `'admin'` |
 | `preferred_lang` | `'ar'` or `'en'`, updated by `PATCH /api/auth/language`. Seed does not set it |
-| `token_version` | Integer, default 0. Stored in the JWT as `tv`. Logout and admin password reset increment it |
+| `token_version` | Integer, default 0. Stored in the JWT as `tv`. Logout, admin password reset, and public password reset increment it |
 | `created_at` | Selected by `GET /api/admin/users`. Default `CURRENT_TIMESTAMP` in `001_init.sql` |
 
 Duplicate `login_id` or email surfaces as MySQL `ER_DUP_ENTRY`, which admin create returns as `DUPLICATE`.
+
+### `password_reset_tokens`
+
+Created by `sql/003_password_reset_tokens.sql`. The API inserts a row from `POST /api/auth/forgot-password` and never stores the raw token.
+
+| Column | Evidence |
+|---|---|
+| `id` | Surrogate key |
+| `user_id` | FK to `users.id`, `ON DELETE CASCADE` |
+| `token_hash` | SHA-256 hex of the reset token. Unique |
+| `expires_at` | `NOW()` plus 60 minutes at insert |
+| `used_at` | Null until the token is spent, replaced by a newer request, or left behind by a successful reset |
+| `created_at` | Default `CURRENT_TIMESTAMP` |
 
 ### `students`
 
@@ -266,13 +279,14 @@ course_offerings 1──* attendance_sessions
 attendance_sessions 1──* attendance_records
 users 1──* messages             as sender and as receiver
 users 1──* notifications
+users 1──* password_reset_tokens
 ```
 
 ## Current status
 
-**Complete** for a new install: `npm run db:init` creates `unidex_db` (or `DB_NAME`) and applies `backend/sql/001_init.sql` when `users` is missing.
+**Complete** for a new install: `npm run db:init` creates `unidex_db` (or `DB_NAME`), applies `backend/sql/001_init.sql` when `users` is missing, then applies later numbered SQL files such as `003_password_reset_tokens.sql`.
 
-**Partial** for an older database: the runner adds `token_version` and normalizes attendance defaults, and it does not rebuild foreign keys or other columns. New attendance scans write `method = 'qr'`. New sessions write `opened_at`, `status`, `token_ttl_seconds`, and `late_after_minutes` explicitly.
+**Partial** for an older database: the runner adds `token_version` and normalizes attendance defaults, applies unrecorded `sql/NNN_*.sql` files, and does not rebuild foreign keys or other columns. New attendance scans write `method = 'qr'`. New sessions write `opened_at`, `status`, `token_ttl_seconds`, and `late_after_minutes` explicitly. Running `npm run db:init` again records nothing new when `003_password_reset_tokens` is already in `schema_migrations`. The token table itself uses `CREATE TABLE IF NOT EXISTS`.
 
 ## Implementation details and gotchas
 

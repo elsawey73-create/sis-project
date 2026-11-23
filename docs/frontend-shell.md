@@ -43,6 +43,8 @@ Defined in `App.jsx`.
 |---|---|---|
 | `/` | none | Redirect to login or role home |
 | `/login` | none | `Login` |
+| `/forgot-password` | none | `ForgotPassword` |
+| `/reset-password` | none | `ResetPassword` (`token` query) |
 | `/catalog` | signed in | `Catalog` |
 | `/notifications` | signed in | `Notifications` |
 | `/messages`, `/messages/:id` | student or instructor | `Messages` |

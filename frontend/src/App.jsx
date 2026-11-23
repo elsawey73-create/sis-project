@@ -5,6 +5,8 @@ import { AuthProvider, useAuth, homeByRole } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import Login from './pages/Login';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 import StudentHome from './pages/student/StudentHome';
 import Registration from './pages/student/Registration';
 import Schedule from './pages/student/Schedule';
@@ -40,6 +42,8 @@ export default function App() {
             <Routes>
             <Route path="/" element={<RootRedirect />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Any signed-in user */}
             <Route element={<ProtectedRoute />}>
