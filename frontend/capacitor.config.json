@@ -6,5 +6,18 @@
     "androidScheme": "https",
     "hostname": "localhost",
     "html5mode": true
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchAutoHide": false,
+      "backgroundColor": "#1E40AF",
+      "androidScaleType": "CENTER_CROP",
+      "showSpinner": false
+    },
+    "SystemBars": {
+      "insetsHandling": "css",
+      "style": "DARK",
+      "initialViewportFitValueHint": "cover"
+    }
   }
 }

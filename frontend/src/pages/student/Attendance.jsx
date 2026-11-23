@@ -1,6 +1,7 @@
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import { Alert, LoadError, Loading, Tag } from '../../components/ui';
+import ScanAttendanceButton from '../../components/ScanAttendance';
 
 export default function Attendance() {
   const { t, pick } = useLanguage();
@@ -11,6 +12,7 @@ export default function Attendance() {
     <div className="card">
       <h2 className="m0">{t('nav.attendance')}</h2>
       <Alert type="info">{t('att.howto')}</Alert>
+      <ScanAttendanceButton />
       <div className="table-wrap gap-top">
         <table className="table">
           <thead><tr><th>{t('col.course')}</th><th>{t('att.sessions')}</th><th>{t('att.attended')}</th><th>{t('att.absent')}</th><th /></tr></thead>

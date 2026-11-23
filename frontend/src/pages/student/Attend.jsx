@@ -3,12 +3,13 @@ import { Link, useSearchParams } from 'react-router-dom';
 import api from '../../api/axios';
 import { useLanguage } from '../../context/LanguageContext';
 import { Alert, Loading } from '../../components/ui';
+import ScanAttendanceButton from '../../components/ScanAttendance';
 import { errorText } from '../../utils/format';
 
 // Page opened by the QR code: /attend?s=<session>&t=<token>
 export default function Attend() {
   const { t, pick } = useLanguage();
-  const [params] = useSearchParams();
+  const [params, setSearchParams] = useSearchParams();
   const [state, setState] = useState({ status: 'loading' });
   const started = useRef(false);
 
@@ -42,6 +43,12 @@ export default function Attend() {
           ✅ {state.data.status === 'late' ? t('att.late') : t('att.recorded')} — <strong>{state.data.course.code}</strong> {pick(state.data.course.name_ar, state.data.course.name_en)}
         </Alert>
       )}
+      <ScanAttendanceButton onScanned={(target) => {
+        if (params.get('s') === target.sessionId && params.get('t') === target.token) return;
+        started.current = false;
+        setState({ status: 'loading' });
+        setSearchParams({ s: target.sessionId, t: target.token });
+      }} />
       <p><Link to="/student/attendance">{t('att.mine')}</Link></p>
     </div>
   );

@@ -32,7 +32,9 @@ Hosting steps for the API and the database are in `docs/deployment.md`.
 
 ## Android app
 
-The native app is a Capacitor Android shell around this Vite build. App id `com.unidex.app`. The WebView origin is `https://localhost`, and client routes such as `/login` are served `index.html` (`server.html5mode` in `capacitor.config.json`), so React Router's `BrowserRouter` works without hash URLs.
+The native app is a Capacitor Android shell around this Vite build. App id `com.unidex.app`. There is no address bar: the activity theme is `NoActionBar`, the status bar is navy with light icons, and the splash is the Unidex mark. The WebView origin is `https://localhost`, and client routes such as `/login` are served `index.html` (`server.html5mode` in `capacitor.config.json`), so React Router's `BrowserRouter` works without hash URLs.
+
+Students record attendance from **Scan attendance QR** on the attendance screen. That button uses `@capacitor/camera` (`Camera.takePhoto`) and is hidden on the website. The app manifest allows the camera. An instructor QR opened from the app points at the public site, not `https://localhost`.
 
 Inside the native app the API base is the production backend (`https://sis-project-production-8d2536d4.up.railway.app/api`). The website build is unchanged: it still uses `VITE_API_URL`. Set `VITE_NATIVE_API_URL` only when the app should call a different API.
 
