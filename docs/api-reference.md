@@ -21,6 +21,8 @@ List every route registered in `backend/src`, the role allowed to call it, and t
 | Method and path | Role | Body / query | Success |
 |---|---|---|---|
 | `POST /api/auth/login` | public | `login_id`, `password` | `{ token, user }` |
+| `POST /api/auth/forgot-password` | public | `identifier` (login id or email). `login_id` and `email` are aliases | `{ ok: true }` for known and unknown accounts. The reset link is emailed, not returned. See [Authentication](authentication.md) |
+| `POST /api/auth/reset-password` | public | `token`, `password` | `{ ok: true }`. Increments `token_version` |
 | `GET /api/auth/me` | any signed-in | | public user, plus `student` or `instructor` |
 | `POST /api/auth/logout` | any signed-in | | `{ ok: true }`. Increments `token_version` |
 | `PATCH /api/auth/language` | any signed-in | `{ lang: 'ar' \| 'en' }` | `{ lang }` |

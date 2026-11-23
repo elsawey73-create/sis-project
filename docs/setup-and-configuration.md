@@ -35,6 +35,7 @@ Backend (`backend/package.json`):
 | `npm run db:init` | `node scripts/migrate.js` |
 | `npm run seed` | `node src/seed.js` |
 | `npm run test:api` | `node scripts/smoke.js` |
+| `npm run test:reset` | `node scripts/test-password-reset.js` |
 
 `npm run test:api` runs `scripts/smoke.js`. The API process must already be listening, and the database should be a fresh seed. The script changes data. See [API smoke test](api-smoke-test.md).
 
@@ -63,6 +64,10 @@ No test script exists on the frontend. No `engines` field pins a Node version in
 | `PORT` | `server.js` | Listen port. Default `5000` when unset, including in production |
 | `API` | `scripts/smoke.js` | Smoke-test base URL. Default `http://localhost:5000/api` |
 | `VITE_API_URL` | `frontend/src/api/axios.js` | Axios `baseURL` when set. Vite inlines it at build time. Include the `/api` suffix |
+| `FRONTEND_URL` | `controllers/authController.js` | Origin written into password-reset links. Falls back to the request `Origin`, then a relative path |
+| `RESEND_API_KEY` | `services/mail.js`, `server.js` | Resend API key. Empty logs a warning and skips sending. The process still starts |
+| `RESEND_FROM` | `services/mail.js` | From address. Empty uses `Unidex <onboarding@resend.dev>`, which can deliver only to the Resend account owner's email |
+| `PASSWORD_RESET_RETURN_LINK` | `controllers/authController.js` | Local only. `true` adds `reset_link` to the JSON when `NODE_ENV` is not `production`. Unset means off. Production ignores it |
 
 `dotenv` is loaded in `server.js`, `config/env.js`, and `seed.js`. `config/db.js` and `scripts/migrate.js` load it by requiring `config/env.js`. A local `backend/.env` supplies `DB_HOST`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `JWT_SECRET`, and `PORT`. Copy names from `backend/.env.example`. Treat `backend/.env` as a development secret. Do not commit it. The root `.gitignore` already ignores `.env`.
 
@@ -86,6 +91,7 @@ Backend runtime (`backend/package.json`):
 | `bcryptjs` | `^3.0.3` | Password hashes |
 | `cors` | `^2.8.6` | Open CORS |
 | `dotenv` | `^18.0.10` | `.env` loading |
+| `resend` | `^6.39.0` | Password-reset email |
 
 Backend dev: `nodemon` `^3.1.14`.
 

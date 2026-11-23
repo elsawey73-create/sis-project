@@ -38,6 +38,9 @@ Copy `backend/.env.example` to `backend/.env` for a local file, or set the same 
 | `CORS_ORIGINS` | Required, comma-separated browser origins such as `https://unidex.example.com`. This is the site the browser loads, not the API URL. Spaces around commas are trimmed. An empty value in development allows every origin and prints a warning. Production exits when the list is empty |
 | `PORT` | Listen port. `5000` when unset, including in production. Many hosts set this themselves |
 | `NODE_ENV` | Set `production` on the public API process |
+| `FRONTEND_URL` | Public site origin used in password-reset links, with no path and no trailing slash, for example `https://unidex.example.com`. When it is empty the API uses the request `Origin`, then a relative path |
+| `RESEND_API_KEY` | Resend API key used to email reset links. When it is empty the API still starts and logs a warning. Do not commit the real value |
+| `RESEND_FROM` | From address. When it is empty the sender is `Unidex <onboarding@resend.dev>`. That Resend test sender can deliver only to the email address of the Resend account owner |
 
 The frontend has one build-time variable:
 

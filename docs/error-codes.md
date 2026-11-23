@@ -26,7 +26,7 @@ Keep client copy and server codes aligned. `translations.js` has an `error.*` en
 | Code | HTTP | Produced when | `details` |
 |---|---|---|---|
 | `MISSING_FIELDS` | 400 | Required body field missing, bad manual attendance status, empty message, invalid JSON body | |
-| `WEAK_PASSWORD` | 400 | Password shorter than 6 | |
+| `WEAK_PASSWORD` | 400 | Password shorter than 6. On public reset the token stays unused | |
 | `INVALID_LOGIN_ID` | 400 | Admin create, login id fails `^[A-Za-z0-9_-]{3,30}$` | |
 | `INVALID_LANGUAGE` | 400 | Language not `ar` or `en` | |
 | `INVALID_DATES` | 400 | Semester start/end or registration window out of order | |
@@ -57,8 +57,11 @@ Keep client copy and server codes aligned. `translations.js` has an `error.*` en
 | `ALREADY_RECORDED` | 409 | Second scan for the same session | |
 | `QR_EXPIRED` | 400 | Bad, expired, or mismatched QR token | |
 | `SESSION_CLOSED` | 400 | Token request or scan when the session is not open | |
+| `INVALID_RESET_TOKEN` | 400 | Reset token missing from the table, already used, or expired | |
+| `RATE_LIMITED` | 429 | Password reset request or confirm over the in-memory per-IP or per-identifier limit | |
 | `SERVER_ERROR` | 500 | Unclassified exception | |
 | `NETWORK` | none | Axios failure with no `response.data.error` | Client only |
+| `PASSWORD_MISMATCH` | none | Reset form: the two passwords differ. Not returned by the API | Client only |
 
 ## How the client formats details
 

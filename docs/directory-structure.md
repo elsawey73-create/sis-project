@@ -21,9 +21,11 @@ sis-project/
 │   ├── .env                    # local only; gitignored (names documented in setup)
 │   ├── scripts/
 │   │   ├── migrate.js          # npm run db:init
-│   │   └── smoke.js            # npm run test:api
+│   │   ├── smoke.js            # npm run test:api
+│   │   └── test-password-reset.js  # npm run test:reset; mocks Resend
 │   ├── sql/
-│   │   └── 001_init.sql        # schema for an empty database
+│   │   ├── 001_init.sql        # schema for an empty database
+│   │   └── 003_password_reset_tokens.sql
 │   └── src/
 │       ├── server.js           # process entry
 │       ├── seed.js             # demo inserts
@@ -46,10 +48,12 @@ sis-project/
 │       ├── services/
 │       │   ├── gpa.js
 │       │   ├── registration.js
-│       │   └── notify.js
+│       │   ├── notify.js
+│       │   └── mail.js         # Resend password-reset email
 │       └── utils/
 │           ├── errors.js
 │           ├── meetings.js
+│           ├── rateLimit.js
 │           └── tx.js
 └── frontend/
     ├── index.html              # title Unidex, lang=ar, dir=rtl
@@ -84,6 +88,8 @@ sis-project/
         │   └── WeeklySchedule.jsx
         └── pages/
             ├── Login.jsx
+            ├── ForgotPassword.jsx
+            ├── ResetPassword.jsx
             ├── student/        # StudentHome, Registration, Schedule, Grades, Transcript, Attendance, Attend
             ├── doctor/         # DoctorHome, OfferingRoster, AttendanceSession
             ├── admin/          # AdminHome, AdminCatalog, AdminOfferings, AdminUsers
@@ -107,5 +113,5 @@ Nothing at the root starts both processes. Each app has its own `npm` scripts. T
 ## Implementation details and gotchas
 
 - A search of application `js` / `jsx` / `css` / `html` / `md` / `sql` files found no `TODO`, `FIXME`, or `WIP` markers. The only ripgrep hit for that pattern was inside `backend/package-lock.json` integrity text.
-- `backend/sql/001_init.sql` is the `CREATE TABLE` script. `npm run db:init` applies it only when `users` is missing.
+- `backend/sql/001_init.sql` is the `CREATE TABLE` script for an empty database. `npm run db:init` applies it only when `users` is missing, then applies later `sql/NNN_*.sql` files that are not recorded. `003_password_reset_tokens.sql` is one of those files.
 - `frontend/src/App.css`, `frontend/src/assets/hero.png`, `frontend/src/assets/react.svg`, `frontend/src/assets/vite.svg`, and `frontend/public/icons.svg` are not referenced by `index.html` or by any file under `frontend/src` other than `App.css` itself.

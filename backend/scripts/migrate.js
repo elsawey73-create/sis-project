@@ -1,6 +1,8 @@
 // Creates the database when needed, applies sql/001_init.sql on an empty
-// database, and adds columns this code requires on a database that already
-// has tables. Usage: npm run db:init
+// database, adds columns this code requires on a database that already
+// has tables, then applies later sql/NNN_*.sql files that are not recorded.
+// Later files must be safe to run again (CREATE TABLE IF NOT EXISTS, and so on).
+// Usage: npm run db:init
 const fs = require('fs');
 const path = require('path');
 const mysql = require('mysql2/promise');
@@ -118,6 +120,24 @@ async function patchExisting(conn) {
 
   await patchExisting(conn);
   await mark(conn, '002_token_and_attendance_defaults');
+
+  const sqlDir = path.join(__dirname, '..', 'sql');
+  const later = fs
+    .readdirSync(sqlDir)
+    .filter((name) => /^\d{3}_.+\.sql$/.test(name) && name !== '001_init.sql')
+    .sort();
+  for (const filename of later) {
+    const id = filename.replace(/\.sql$/, '');
+    if (await applied(conn, id)) {
+      console.log(`${id} already recorded.`);
+      continue;
+    }
+    const sql = fs.readFileSync(path.join(sqlDir, filename), 'utf8');
+    for (const statement of statements(sql)) await conn.query(statement);
+    await mark(conn, id);
+    console.log(`Applied sql/${filename}`);
+  }
+
   console.log(`Database \`${dbName}\` is ready.`);
   await conn.end();
 })().catch((err) => {
