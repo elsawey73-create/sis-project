@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useLayoutEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
@@ -6,6 +6,7 @@ import { useLanguage } from '../context/LanguageContext';
 import Brand from './Brand';
 import LanguageSwitcher from './LanguageSwitcher';
 import ThemeSwitcher from './ThemeSwitcher';
+import { labelResponsiveTables } from './labelTables';
 
 const links = {
   student: [
@@ -22,7 +23,7 @@ const links = {
 
 export default function Layout() {
   const { user, logout } = useAuth();
-  const { t, pick } = useLanguage();
+  const { t, pick, lang } = useLanguage();
   const location = useLocation();
   const [summary, setSummary] = useState({ notifications: 0, messages: 0 });
 
@@ -36,6 +37,15 @@ export default function Layout() {
   }, [location.pathname]);
 
   const canMessage = user.role !== 'admin';
+
+  // Stacked phone cards read the column title from data-label.
+  useLayoutEffect(() => {
+    const run = () => labelResponsiveTables(document.body);
+    run();
+    const observer = new MutationObserver(run);
+    observer.observe(document.body, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  }, [location.pathname, lang]);
 
   return (
     <div>

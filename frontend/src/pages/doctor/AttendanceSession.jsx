@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
+import { Capacitor } from '@capacitor/core';
 import api from '../../api/axios';
+import { PUBLIC_WEB_ORIGIN, attendancePageUrl } from '../../native/attendanceLink';
 import { useLanguage } from '../../context/LanguageContext';
 import { Alert, LoadError, Loading, Stat } from '../../components/ui';
 import { errorText } from '../../utils/format';
@@ -67,8 +69,18 @@ export default function AttendanceSession() {
 
   if (!info) return loadError ? <LoadError error={loadError} onRetry={loadInfo} /> : <Loading />;
   const { session, students, present, total } = info;
-  const url = token ? `${window.location.origin}/attend?s=${id}&t=${token}` : '';
-  const phoneCannotOpen = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+  const pageOrigin = Capacitor.isNativePlatform()
+    ? (import.meta.env.VITE_PUBLIC_WEB_URL || PUBLIC_WEB_ORIGIN)
+    : window.location.origin;
+  const url = token ? attendancePageUrl(pageOrigin, id, token) : '';
+  let phoneCannotOpen = false;
+  if (url) {
+    try {
+      phoneCannotOpen = ['localhost', '127.0.0.1', '::1'].includes(new URL(url).hostname);
+    } catch {
+      phoneCannotOpen = false;
+    }
+  }
 
   return (
     <>
@@ -99,6 +111,9 @@ export default function AttendanceSession() {
           <Stat label={t('att.attended')} value={`${present} / ${total}`} />
           <div className="table-wrap gap-top">
             <table className="table">
+              <thead>
+                <tr><th>ID</th><th>{t('col.student')}</th><th>{t('att.status')}</th></tr>
+              </thead>
               <tbody>
                 {students.map((s) => (
                   <tr key={s.student_id}>
