@@ -3,6 +3,7 @@ import api from '../../api/axios';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import { Alert, Field, LoadError, Loading } from '../../components/ui';
+import { isNativeApp } from '../../native/platform';
 import { errorText } from '../../utils/format';
 
 const emptyCourse = { code: '', name_ar: '', name_en: '', description_ar: '', description_en: '', credit_hours: 3, department_id: '', has_practical: false, prerequisites: [] };
@@ -46,6 +47,20 @@ export default function AdminCatalog() {
 
       <div className="card">
         <h3 className="m0">{t('admin.departments')}</h3>
+        {isNativeApp() ? (
+          <div className="native-stack">
+            {depts.data.length === 0 && <p className="native-empty muted">{t('reg.none')}</p>}
+            {depts.data.map((d) => (
+              <article key={d.id} className="native-card native-card-top">
+                <div>
+                  <span className="native-code">{d.code}</span>
+                  <strong>{pick(d.name_ar, d.name_en)}</strong>
+                </div>
+                <button type="button" className="btn-small" onClick={() => confirm(t('common.confirm')) && run(() => api.delete(`/departments/${d.id}`))}>{t('common.delete')}</button>
+              </article>
+            ))}
+          </div>
+        ) : (
         <div className="table-wrap">
         <table className="table">
           <tbody>
@@ -59,6 +74,7 @@ export default function AdminCatalog() {
           </tbody>
         </table>
         </div>
+        )}
         <form className="toolbar inline" onSubmit={saveDept}>
           <input required placeholder="CS" value={dept.code} onChange={(e) => setDept({ ...dept, code: e.target.value })} />
           <input required placeholder={t('form.nameAr')} value={dept.name_ar} onChange={(e) => setDept({ ...dept, name_ar: e.target.value })} />
@@ -103,6 +119,26 @@ export default function AdminCatalog() {
           </form>
         )}
 
+        {isNativeApp() ? (
+          <div className="native-stack">
+            {courses.data.map((c) => (
+              <article key={c.id} className="native-card">
+                <div className="native-card-top">
+                  <div>
+                    <span className="native-code">{c.code}</span>
+                    <strong>{pick(c.name_ar, c.name_en)}</strong>
+                  </div>
+                  <span className="tag tag-info">{c.credit_hours}</span>
+                </div>
+                <p className="muted small">{t('col.prereq')}: {c.prerequisites.map((p) => p.code).join(', ') || '—'}</p>
+                <div className="native-actions">
+                  <button type="button" className="b b-ghost" onClick={() => editCourse(c)}>{t('common.edit')}</button>
+                  <button type="button" className="btn-small" onClick={() => confirm(t('common.confirm')) && run(() => api.delete(`/courses/${c.id}`))}>{t('common.delete')}</button>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
         <div className="table-wrap">
           <table className="table">
             <thead><tr><th>{t('col.code')}</th><th>{t('col.course')}</th><th>{t('col.credits')}</th><th>{t('col.prereq')}</th><th /></tr></thead>
@@ -120,6 +156,7 @@ export default function AdminCatalog() {
             </tbody>
           </table>
         </div>
+        )}
       </div>
     </>
   );

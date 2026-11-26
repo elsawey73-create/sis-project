@@ -3,6 +3,8 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
+import { isNativeApp } from '../native/platform';
+import NativeShell from '../native/NativeShell';
 import Brand from './Brand';
 import LanguageSwitcher from './LanguageSwitcher';
 import ThemeSwitcher from './ThemeSwitcher';
@@ -21,6 +23,11 @@ const links = {
 };
 
 export default function Layout() {
+  if (isNativeApp()) return <NativeShell />;
+  return <WebLayout />;
+}
+
+function WebLayout() {
   const { user, logout } = useAuth();
   const { t, pick } = useLanguage();
   const location = useLocation();

@@ -2,12 +2,15 @@ import { Link } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import { LoadError, Loading, Stat } from '../../components/ui';
+import { isNativeApp } from '../../native/platform';
+import { AdminHomeNative } from '../../native/views';
 
 export default function AdminHome() {
   const { t, pick } = useLanguage();
   const { data, error, loading, reload } = useFetch('/admin/stats');
   if (loading) return <Loading />;
   if (error || data == null) return <LoadError error={error} onRetry={reload} />;
+  if (isNativeApp()) return <AdminHomeNative data={data} />;
   return (
     <>
       <div className="card">

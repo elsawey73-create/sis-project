@@ -3,6 +3,7 @@ import api from '../../api/axios';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import { Alert, FetchBody, Field, LoadError } from '../../components/ui';
+import { isNativeApp } from '../../native/platform';
 import { errorText } from '../../utils/format';
 
 const empty = { login_id: '', password: '', full_name_ar: '', full_name_en: '', email: '', role: 'student', department_id: '' };
@@ -69,7 +70,26 @@ export default function AdminUsers() {
       </div>
 
       <FetchBody loading={users.loading} error={users.error} data={users.data} onRetry={users.reload}>
-        {(list) => (
+        {(list) => isNativeApp() ? (
+        <div className="native-stack">
+          {list.length === 0 && <p className="native-empty muted">{t('reg.none')}</p>}
+          {list.map((u) => (
+            <article key={u.id} className="native-card">
+              <div className="native-card-top">
+                <div>
+                  <strong>{pick(u.full_name_ar, u.full_name_en)}</strong>
+                  <div className="muted small"><bdi>{u.login_id}</bdi></div>
+                </div>
+                <span className="tag tag-info">{t('role.' + u.role)}</span>
+              </div>
+              <button type="button" className="b b-ghost" onClick={() => {
+                const pw = prompt(t('users.newPassword'));
+                if (pw) run(() => api.put(`/admin/users/${u.id}/password`, { password: pw }));
+              }}>{t('users.resetPw')}</button>
+            </article>
+          ))}
+        </div>
+        ) : (
         <div className="table-wrap">
           <table className="table">
             <thead><tr><th>ID</th><th>{t('col.name')}</th><th>{t('users.role')}</th><th /></tr></thead>
