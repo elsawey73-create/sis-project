@@ -17,8 +17,8 @@ export default function DoctorHome() {
 
   async function startAttendance(o) {
     try {
-      const r = await api.post('/attendance/sessions', { offering_id: o.id });
-      navigate(`/doctor/attendance/${r.data.id}`);
+      const r = await api.post('/attendance/qr', { class_id: o.id });
+      navigate(`/doctor/attendance/${r.data.session_id}`);
     } catch (e) { setActionError(errorText(e, t)); }
   }
 
@@ -103,7 +103,7 @@ export default function DoctorHome() {
                   <td className="actions">
                     <Link className="b b-ghost" to={`/doctor/offerings/${o.id}`}>{t('doc.gradesStudents')}</Link>
                     <button className="b b-primary" onClick={() => startAttendance(o)}>
-                      {o.open_session_id ? t('doc.continueAtt') : t('doc.startAtt')}
+                      {o.open_session_id ? t('doc.continueAtt') : t('doc.generateQr')}
                     </button>
                     {o.open_session_id && <Tag kind="ok">{t('att.live')}</Tag>}
                   </td>
