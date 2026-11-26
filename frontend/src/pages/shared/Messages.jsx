@@ -5,6 +5,8 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import { Alert, FetchBody, Field, LoadError } from '../../components/ui';
+import { useFeedback } from '../../context/FeedbackContext';
+import { prefersReducedMotion } from '../../utils/motion';
 import { isNativeApp } from '../../native/platform';
 import { errorText } from '../../utils/format';
 
@@ -22,8 +24,11 @@ export default function Messages() {
   const [error, setError] = useState('');
   const [sending, setSending] = useState(false);
   const endRef = useRef(null);
+  const { toast } = useFeedback();
 
-  useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [thread.data]);
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+  }, [thread.data]);
 
   async function send(e) {
     e.preventDefault();
@@ -36,8 +41,13 @@ export default function Messages() {
       setComposing(false);
       setForm({ contact: '', subject: '', body: '' });
       threads.reload();
+      toast({ type: 'success', message: t('msg.sent') });
       navigate(`/messages/${r.data.id}`);
-    } catch (err) { setError(errorText(err, t)); }
+    } catch (err) {
+      const text = errorText(err, t);
+      setError(text);
+      toast({ type: 'error', message: text });
+    }
     finally { setSending(false); }
   }
 
@@ -50,7 +60,12 @@ export default function Messages() {
       setReply('');
       thread.reload();
       threads.reload();
-    } catch (err) { setError(errorText(err, t)); }
+      toast({ type: 'success', message: t('msg.sent') });
+    } catch (err) {
+      const text = errorText(err, t);
+      setError(text);
+      toast({ type: 'error', message: text });
+    }
     finally { setSending(false); }
   }
 
@@ -80,7 +95,7 @@ export default function Messages() {
         </FetchBody>
       </div>
 
-      <div className="card msg-view">
+      <div className="card msg-view" key={composing ? 'new' : (id || 'none')}>
         {native && showThread && (
           <button type="button" className="b b-ghost gap-bottom" onClick={() => { setComposing(false); navigate('/messages'); }}>{t('native.back')}</button>
         )}

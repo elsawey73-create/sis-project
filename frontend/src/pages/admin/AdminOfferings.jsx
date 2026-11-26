@@ -3,6 +3,7 @@ import api from '../../api/axios';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import { Alert, FetchBody, Field, LoadError, Loading, Tag } from '../../components/ui';
+import { useFeedback } from '../../context/FeedbackContext';
 import { isNativeApp } from '../../native/platform';
 import { DAYS, errorText, hhmm } from '../../utils/format';
 
@@ -23,11 +24,27 @@ export default function AdminOfferings() {
   const [off, setOff] = useState(null);
   const [offEdit, setOffEdit] = useState(null);
   const [msg, setMsg] = useState(null);
+  const { confirm, toast } = useFeedback();
 
   async function run(fn) {
     setMsg(null);
-    try { await fn(); sems.reload(); offers.reload(); setMsg({ type: 'success', text: t('common.saved') }); }
-    catch (e) { setMsg({ type: 'error', text: errorText(e, t) }); }
+    try {
+      await fn();
+      sems.reload();
+      offers.reload();
+      const text = t('common.saved');
+      setMsg({ type: 'success', text });
+      toast({ type: 'success', message: text });
+    } catch (e) {
+      const text = errorText(e, t);
+      setMsg({ type: 'error', text });
+      toast({ type: 'error', message: text });
+    }
+  }
+
+  async function removeOffering(id) {
+    const ok = await confirm({ message: t('common.confirm'), confirmLabel: t('common.delete'), danger: true });
+    if (ok) run(() => api.delete(`/offerings/${id}`));
   }
 
   const saveSem = (e) => { e.preventDefault(); run(async () => { if (semEdit) await api.put(`/semesters/${semEdit}`, sem); else await api.post('/semesters', sem); setSem(null); setSemEdit(null); }); };
@@ -193,7 +210,7 @@ export default function AdminOfferings() {
                     <td>{o.enrolled_count}/{o.capacity}</td>
                     <td className="actions">
                       <button className="b b-ghost" onClick={() => editOff(o)}>{t('common.edit')}</button>
-                      <button className="btn-small" onClick={() => confirm(t('common.confirm')) && run(() => api.delete(`/offerings/${o.id}`))}>{t('common.delete')}</button>
+                      <button type="button" className="btn-small" onClick={() => removeOffering(o.id)}>{t('common.delete')}</button>
                     </td>
                   </tr>
                 ))}

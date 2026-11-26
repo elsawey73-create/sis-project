@@ -3,6 +3,7 @@ import api from '../../api/axios';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import { Alert, Field, LoadError, Loading } from '../../components/ui';
+import { useFeedback } from '../../context/FeedbackContext';
 import { isNativeApp } from '../../native/platform';
 import { errorText } from '../../utils/format';
 
@@ -17,11 +18,27 @@ export default function AdminCatalog() {
   const [course, setCourse] = useState(null); // null hides the editor.
   const [editId, setEditId] = useState(null);
   const [msg, setMsg] = useState(null);
+  const { confirm, toast } = useFeedback();
 
   async function run(fn) {
     setMsg(null);
-    try { await fn(); depts.reload(); courses.reload(); setMsg({ type: 'success', text: t('common.saved') }); }
-    catch (e) { setMsg({ type: 'error', text: errorText(e, t) }); }
+    try {
+      await fn();
+      depts.reload();
+      courses.reload();
+      const text = t('common.saved');
+      setMsg({ type: 'success', text });
+      toast({ type: 'success', message: text });
+    } catch (e) {
+      const text = errorText(e, t);
+      setMsg({ type: 'error', text });
+      toast({ type: 'error', message: text });
+    }
+  }
+
+  async function remove(url) {
+    const ok = await confirm({ message: t('common.confirm'), confirmLabel: t('common.delete'), danger: true });
+    if (ok) run(() => api.delete(url));
   }
 
   const saveDept = (e) => { e.preventDefault(); run(async () => { await api.post('/departments', dept); setDept(emptyDept); }); };
@@ -68,7 +85,7 @@ export default function AdminCatalog() {
             {depts.data.map((d) => (
               <tr key={d.id}>
                 <td><strong>{d.code}</strong></td><td>{d.name_ar}</td><td>{d.name_en}</td>
-                <td><button className="btn-small" onClick={() => confirm(t('common.confirm')) && run(() => api.delete(`/departments/${d.id}`))}>{t('common.delete')}</button></td>
+                <td><button type="button" className="btn-small" onClick={() => remove(`/departments/${d.id}`)}>{t('common.delete')}</button></td>
               </tr>
             ))}
           </tbody>
@@ -149,7 +166,7 @@ export default function AdminCatalog() {
                   <td>{c.prerequisites.map((p) => p.code).join(', ') || '—'}</td>
                   <td className="actions">
                     <button className="b b-ghost" onClick={() => editCourse(c)}>{t('common.edit')}</button>
-                    <button className="btn-small" onClick={() => confirm(t('common.confirm')) && run(() => api.delete(`/courses/${c.id}`))}>{t('common.delete')}</button>
+                    <button type="button" className="btn-small" onClick={() => remove(`/courses/${c.id}`)}>{t('common.delete')}</button>
                   </td>
                 </tr>
               ))}
