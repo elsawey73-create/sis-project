@@ -1,13 +1,14 @@
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import { LoadError, Loading, Tag } from '../../components/ui';
+import { isNativeApp } from '../../native/platform';
+import { GradesNative } from '../../native/views';
 
 export default function Grades() {
   const { t, pick } = useLanguage();
   const { data, error, loading, reload } = useFetch('/student/grades');
   if (loading) return <Loading />;
   if (error || data == null) return <LoadError error={error} onRetry={reload} />;
-  if (data.length === 0) return <div className="card"><p className="muted">{t('grades.none')}</p></div>;
 
   const groups = [];
   data.forEach((r) => {
@@ -15,6 +16,9 @@ export default function Grades() {
     if (!g) groups.push((g = { id: r.semester_id, ar: r.semester_ar, en: r.semester_en, rows: [] }));
     g.rows.push(r);
   });
+
+  if (isNativeApp()) return <GradesNative groups={groups} />;
+  if (data.length === 0) return <div className="card"><p className="muted">{t('grades.none')}</p></div>;
 
   return groups.map((g) => (
     <div className="card gap-bottom" key={g.id}>

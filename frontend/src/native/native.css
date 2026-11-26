@@ -1,0 +1,714 @@
+/* Native Android shell. Every rule is scoped to html.native-app, which is set
+   only when Capacitor.isNativePlatform() is true, so the website layout is unchanged. */
+
+html.native-app {
+  --safe-top: var(--safe-area-inset-top, env(safe-area-inset-top, 0px));
+  --safe-right: var(--safe-area-inset-right, env(safe-area-inset-right, 0px));
+  --safe-bottom: var(--safe-area-inset-bottom, env(safe-area-inset-bottom, 0px));
+  --safe-left: var(--safe-area-inset-left, env(safe-area-inset-left, 0px));
+  --native-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+html.native-app,
+html.native-app body,
+html.native-app #root {
+  min-height: 100%;
+  background: var(--color-bg);
+}
+
+html.native-app body {
+  overflow: hidden;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html.native-app .native-shell {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-bg);
+}
+
+html.native-app .native-topbar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding-top: calc(8px + var(--safe-top));
+  padding-bottom: 8px;
+  padding-inline-start: calc(12px + var(--safe-left));
+  padding-inline-end: calc(12px + var(--safe-right));
+  background: var(--color-nav);
+  color: var(--color-on-primary);
+  z-index: 15;
+}
+
+html.native-app .native-topbar .brand,
+html.native-app .native-topbar .brand-name,
+html.native-app .native-top-title {
+  color: var(--color-on-primary);
+}
+
+html.native-app .native-top-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+html.native-app .native-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+html.native-app .native-topbar .btn-lang {
+  padding: 6px 8px;
+  font-size: 12px;
+  background: color-mix(in srgb, var(--color-on-primary) 12%, transparent);
+  color: var(--color-on-primary);
+}
+
+html.native-app .native-back {
+  width: 40px;
+  height: 40px;
+  display: inline-grid;
+  place-items: center;
+  border: none;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--color-on-primary) 10%, transparent);
+  color: var(--color-on-primary);
+  cursor: pointer;
+}
+
+html.native-app[dir="rtl"] .native-back .native-icon {
+  transform: scaleX(-1);
+}
+
+html.native-app .native-stage {
+  flex: 1;
+  overflow: auto;
+  padding-top: 16px;
+  padding-bottom: calc(112px + var(--safe-bottom));
+  padding-inline-start: calc(16px + var(--safe-left));
+  padding-inline-end: calc(16px + var(--safe-right));
+}
+
+html.native-app .native-page {
+  animation: native-page-in 320ms var(--native-ease);
+}
+
+html.native-app .native-tabbar {
+  position: fixed;
+  z-index: 20;
+  inset-inline: 0;
+  bottom: 0;
+  display: flex;
+  align-items: stretch;
+  background: var(--color-nav);
+  padding-bottom: var(--safe-bottom);
+  padding-inline-start: var(--safe-left);
+  padding-inline-end: var(--safe-right);
+}
+
+html.native-app .native-tab {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 56px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 2px 8px;
+  border: none;
+  background: transparent;
+  color: color-mix(in srgb, var(--color-on-primary) 68%, transparent);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+html.native-app .native-tab:hover,
+html.native-app .native-tab:focus-visible {
+  color: var(--color-on-primary);
+  text-decoration: none;
+}
+
+html.native-app .native-tab-icon {
+  position: relative;
+  width: 56px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  transition: background-color 180ms ease-out, color 180ms ease-out;
+}
+
+html.native-app .native-tab.active {
+  color: var(--color-on-primary);
+}
+
+html.native-app .native-tab.active .native-tab-icon {
+  background: var(--color-primary);
+  color: var(--color-on-fill);
+}
+
+html.native-app .native-tab .count {
+  position: absolute;
+  top: -4px;
+  inset-inline-end: 6px;
+}
+
+html.native-app .native-tab-label {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+html.native-app .native-icon {
+  width: 22px;
+  height: 22px;
+  display: block;
+}
+
+html.native-app .native-fab-scrim,
+html.native-app .native-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 25;
+  border: none;
+  padding: 0;
+  background: color-mix(in srgb, var(--color-text) 38%, transparent);
+  animation: native-fade 180ms ease-out;
+  cursor: pointer;
+}
+
+html.native-app .native-backdrop { z-index: 40; }
+
+html.native-app .native-fab-dock {
+  position: fixed;
+  z-index: 30;
+  inset-inline-end: calc(16px + var(--safe-right));
+  bottom: calc(76px + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+html.native-app .native-fab-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+}
+
+html.native-app .native-fab-action {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  animation: native-pop 240ms var(--native-ease) both;
+}
+
+html.native-app .native-fab-action:nth-child(1) { animation-delay: 30ms; }
+html.native-app .native-fab-action:nth-child(2) { animation-delay: 60ms; }
+html.native-app .native-fab-action:nth-child(3) { animation-delay: 90ms; }
+html.native-app .native-fab-action:nth-child(4) { animation-delay: 120ms; }
+html.native-app .native-fab-action:nth-child(5) { animation-delay: 150ms; }
+
+html.native-app .native-fab-label {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  font-size: 13px;
+  font-weight: 650;
+  box-shadow: 0 6px 16px color-mix(in srgb, var(--color-text) 12%, transparent);
+}
+
+html.native-app .native-fab,
+html.native-app .native-fab-mini {
+  position: relative;
+  display: grid;
+  place-items: center;
+  border: none;
+  color: var(--color-on-fill);
+  background: var(--color-primary);
+  cursor: pointer;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--color-primary) 42%, transparent);
+}
+
+html.native-app .native-fab {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  transition: transform 180ms var(--native-ease), background-color 180ms ease-out;
+}
+
+html.native-app .native-fab:active,
+html.native-app .native-fab-mini:active,
+html.native-app .native-tab:active {
+  transform: scale(0.96);
+}
+
+html.native-app .native-fab.is-open {
+  background: var(--color-nav-raised);
+}
+
+html.native-app .native-fab-mini {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: var(--color-nav-raised);
+}
+
+html.native-app .native-fab-mini.is-primary {
+  width: 48px;
+  height: 48px;
+  background: var(--color-primary);
+}
+
+html.native-app .native-fab-mini .count {
+  position: absolute;
+  top: -4px;
+  inset-inline-end: -4px;
+}
+
+html.native-app .native-sheet {
+  position: fixed;
+  z-index: 41;
+  inset-inline: 0;
+  bottom: 0;
+  max-height: min(82dvh, 680px);
+  overflow: auto;
+  padding: 8px 16px calc(18px + var(--safe-bottom));
+  background: var(--color-surface);
+  color: var(--color-text);
+  border-radius: 24px 24px 0 0;
+  box-shadow: 0 -12px 40px color-mix(in srgb, var(--color-text) 18%, transparent);
+  animation: native-sheet-in 300ms var(--native-ease);
+}
+
+html.native-app .native-grab {
+  width: 40px;
+  height: 4px;
+  margin: 4px auto 12px;
+  border-radius: 999px;
+  background: var(--color-border);
+}
+
+html.native-app .native-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 0;
+  padding: 12px;
+  border-radius: 16px;
+  background: var(--color-bg);
+}
+
+html.native-app .native-avatar {
+  width: 48px;
+  height: 48px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: var(--color-primary);
+  color: var(--color-on-fill);
+  font-weight: 700;
+  font-size: 20px;
+}
+
+html.native-app .native-link-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--color-bg);
+  color: var(--color-text);
+  text-decoration: none;
+  font-weight: 650;
+}
+
+html.native-app .native-link-row:hover {
+  background: var(--color-primary-light);
+  color: var(--color-text);
+  text-decoration: none;
+}
+
+html.native-app .native-link-row .native-icon { color: var(--color-primary); }
+html.native-app .native-link-row span:nth-child(2) { flex: 1; }
+
+html.native-app .native-stack { display: flex; flex-direction: column; gap: 12px; }
+html.native-app .native-section { display: flex; flex-direction: column; gap: 10px; }
+html.native-app .native-section-head,
+html.native-app .native-card-top,
+html.native-app .native-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+html.native-app .native-section-head h2,
+html.native-app .native-section > h2 {
+  margin: 0;
+  font-size: 18px;
+}
+
+html.native-app .native-hero h2 { font-size: 26px; line-height: 1.25; }
+html.native-app .native-kicker {
+  margin: 0 0 4px;
+  color: var(--color-primary);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+html.native-app .native-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+html.native-app .native-metric { margin: 0; }
+html.native-app .native-metric-value {
+  font-size: 26px;
+  font-weight: 750;
+  color: var(--color-primary);
+  line-height: 1.1;
+}
+html.native-app .native-metric-label { color: var(--color-text-secondary); font-size: 13px; }
+
+html.native-app .native-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 18px;
+  padding: 14px;
+  box-shadow: 0 8px 22px color-mix(in srgb, var(--color-text) 5%, transparent);
+  animation: native-card-in 360ms var(--native-ease) both;
+}
+
+html.native-app .native-card:nth-child(2) { animation-delay: 40ms; }
+html.native-app .native-card:nth-child(3) { animation-delay: 80ms; }
+html.native-app .native-card:nth-child(4) { animation-delay: 120ms; }
+html.native-app .native-card:nth-child(5) { animation-delay: 160ms; }
+html.native-app .native-card:nth-child(n + 6) { animation-delay: 200ms; }
+html.native-app .native-card.is-muted { opacity: 0.72; }
+
+html.native-app .native-code {
+  display: inline-block;
+  margin-inline-end: 6px;
+  color: var(--color-primary);
+  font-weight: 750;
+}
+
+html.native-app .native-card-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: start;
+  cursor: pointer;
+}
+
+html.native-app .native-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+html.native-app .native-chip {
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: var(--color-primary-light);
+  color: var(--color-text);
+  font-size: 12px;
+}
+
+html.native-app .native-score-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 8px;
+}
+
+html.native-app .native-score {
+  padding: 8px;
+  border-radius: 12px;
+  background: var(--color-bg);
+}
+
+html.native-app .native-score span {
+  display: block;
+  color: var(--color-text-secondary);
+  font-size: 12px;
+}
+
+html.native-app .native-bar {
+  height: 8px;
+  margin: 10px 0 4px;
+  border-radius: 999px;
+  background: var(--color-border);
+  overflow: hidden;
+}
+
+html.native-app .native-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--color-primary);
+}
+
+html.native-app .native-day { display: flex; flex-direction: column; gap: 8px; }
+html.native-app .native-day.is-today { border-color: var(--color-primary); }
+html.native-app .native-slot {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 10px;
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--color-primary-light);
+  border-inline-start: 4px solid var(--color-primary);
+}
+
+html.native-app .native-slot.slot-lab {
+  background: color-mix(in srgb, var(--color-warning) 22%, var(--color-surface));
+  border-inline-start-color: var(--color-warning);
+}
+
+html.native-app .native-slot.slot-section {
+  background: color-mix(in srgb, var(--color-success) 18%, var(--color-surface));
+  border-inline-start-color: var(--color-success);
+}
+
+html.native-app .native-slot-time {
+  display: flex;
+  flex-direction: column;
+  font-size: 13px;
+}
+
+html.native-app .native-empty { margin: 4px 0; }
+html.native-app .native-line { padding: 8px 0; border-bottom: 1px solid var(--color-border); }
+html.native-app .native-line.is-muted { color: var(--color-text-secondary); }
+html.native-app .native-filters { display: flex; flex-direction: column; gap: 8px; }
+html.native-app .native-actions .b,
+html.native-app .native-card .b,
+html.native-app .native-card .btn-small { min-height: 42px; }
+html.native-app .native-card .status-select,
+html.native-app .native-card input.num { width: 100%; }
+html.native-app .native-card .status-select,
+html.native-app .native-card input.num { width: 100%; }
+
+html.native-app .native-scan-cta {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: none;
+  border-radius: 18px;
+  background: var(--color-primary);
+  color: var(--color-on-fill);
+  text-align: start;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: 0 10px 24px color-mix(in srgb, var(--color-primary) 35%, transparent);
+}
+
+html.native-app .native-scan-cta small {
+  display: block;
+  margin-top: 2px;
+  color: color-mix(in srgb, var(--color-on-fill) 82%, transparent);
+  font-size: 12px;
+}
+
+html.native-app .native-scan-cta .native-icon { width: 28px; height: 28px; flex: none; }
+
+html.native-app .native-scanner {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background: var(--color-nav);
+  color: var(--color-on-primary);
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+  animation: native-sheet-in 280ms var(--native-ease);
+}
+
+html.native-app .native-scanner-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+}
+
+html.native-app .native-scanner-bar h2 { color: var(--color-on-primary); font-size: 18px; }
+
+html.native-app .native-viewfinder {
+  position: relative;
+  margin: 8px 16px;
+  height: min(52dvh, 420px);
+  border-radius: 24px;
+  overflow: hidden;
+  background: var(--color-nav-raised);
+}
+
+html.native-app .native-viewfinder.is-hidden { display: none; }
+
+html.native-app .native-viewfinder video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: var(--color-nav);
+}
+
+html.native-app .native-reticle {
+  position: absolute;
+  inset: 14%;
+  border: 3px solid var(--color-on-primary);
+  border-radius: 18px;
+  box-shadow: 0 0 0 999px color-mix(in srgb, var(--color-nav) 28%, transparent);
+}
+
+html.native-app .native-scanner-body {
+  flex: 1;
+  overflow: auto;
+  margin-top: 8px;
+  padding: 16px 16px 24px;
+  border-radius: 24px 24px 0 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+}
+
+html.native-app .center {
+  padding-top: calc(16px + var(--safe-top));
+  padding-bottom: calc(16px + var(--safe-bottom));
+}
+
+html.native-app .center:has(.login-card) {
+  display: block;
+  min-height: 100dvh;
+  padding: 0;
+}
+
+html.native-app .login-card {
+  position: relative;
+  width: 100%;
+  max-width: none;
+  min-height: 100dvh;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--color-bg);
+  padding: 0 20px calc(28px + var(--safe-bottom));
+}
+
+html.native-app .login-top {
+  position: absolute;
+  z-index: 2;
+  top: calc(12px + var(--safe-top));
+  inset-inline-end: 16px;
+}
+
+html.native-app .login-top .btn-lang {
+  background: color-mix(in srgb, var(--color-on-primary) 14%, transparent);
+  color: var(--color-on-primary);
+}
+
+html.native-app .login-head {
+  margin-inline: -20px;
+  padding: calc(76px + var(--safe-top)) 24px 32px;
+  background: var(--color-nav);
+  color: var(--color-on-primary);
+  border-end-start-radius: 28px;
+  border-end-end-radius: 28px;
+}
+
+html.native-app .login-head .brand,
+html.native-app .login-head .brand-name,
+html.native-app .login-head .muted {
+  color: var(--color-on-primary);
+}
+
+html.native-app .login-title { margin-top: 22px; }
+
+html.native-app input,
+html.native-app select,
+html.native-app textarea {
+  font-size: 16px;
+  min-height: 46px;
+}
+
+html.native-app .b,
+html.native-app .btn { min-height: 46px; }
+
+html.native-app .msg-layout { display: block; }
+html.native-app .native-msgs.is-thread .msg-list,
+html.native-app .native-msgs.is-list .msg-view { display: none; }
+html.native-app .bubbles { max-height: none; }
+html.native-app .thread,
+html.native-app .notif { border-radius: 16px; margin-bottom: 8px; }
+html.native-app .bubble { border-radius: 16px; }
+
+html.native-app .table-wrap { overflow: visible; }
+html.native-app table.table,
+html.native-app table.table tbody { display: flex; flex-direction: column; gap: 10px; }
+html.native-app table.table thead { display: none; }
+html.native-app table.table tr {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 16px;
+  background: var(--color-surface);
+}
+html.native-app table.table td {
+  display: block;
+  border: none;
+  padding: 2px 0;
+  background: transparent;
+}
+
+@keyframes native-page-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes native-card-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+
+@keyframes native-sheet-in {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes native-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes native-pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.92); }
+  to { opacity: 1; transform: none; }
+}

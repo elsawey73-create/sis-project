@@ -6,5 +6,12 @@
     "androidScheme": "https",
     "hostname": "localhost",
     "html5mode": true
+  },
+  "plugins": {
+    "SystemBars": {
+      "insetsHandling": "css",
+      "style": "DARK",
+      "initialViewportFitValueHint": "cover"
+    }
   }
 }

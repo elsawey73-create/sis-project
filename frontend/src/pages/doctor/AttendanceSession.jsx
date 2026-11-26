@@ -4,6 +4,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import api from '../../api/axios';
 import { useLanguage } from '../../context/LanguageContext';
 import { Alert, LoadError, Loading, Stat } from '../../components/ui';
+import { isNativeApp } from '../../native/platform';
 import { errorText } from '../../utils/format';
 
 export default function AttendanceSession() {
@@ -68,7 +69,8 @@ export default function AttendanceSession() {
   if (!info) return loadError ? <LoadError error={loadError} onRetry={loadInfo} /> : <Loading />;
   const { session, students, present, total } = info;
   const url = token ? `${window.location.origin}/attend?s=${id}&t=${token}` : '';
-  const phoneCannotOpen = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+  const native = isNativeApp();
+  const phoneCannotOpen = !native && ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 
   return (
     <>
@@ -81,22 +83,39 @@ export default function AttendanceSession() {
         <Alert>{error}</Alert>
       </div>
 
-      <div className="grid-qr gap-top">
-        <div className="card center-text">
+      <div className={native ? 'native-stack' : 'grid-qr gap-top'}>
+        <div className={native ? 'native-card center-text' : 'card center-text'}>
           {open ? (
             <>
               {phoneCannotOpen && <Alert type="warn">{t('att.phoneHost')}</Alert>}
               <div className="qr-box">{url ? <QRCodeSVG value={url} size={280} includeMargin bgColor="#FFFFFF" fgColor="#0F172A" /> : tokenError ? null : <Loading />}</div>
               {tokenError && <LoadError error={tokenError} onRetry={refreshToken} />}
-              <p className="muted small">{t('att.qrHint')}</p>
+              <p className="muted small">{native ? t('att.qrHintApp') : t('att.qrHint')}</p>
               <button className="b b-danger" onClick={close}>{t('att.close')}</button>
             </>
           ) : (
             <p className="muted">🔒 {t('att.closed')}</p>
           )}
         </div>
-        <div className="card">
+        <div className={native ? 'native-stack' : 'card'}>
           <Stat label={t('att.attended')} value={`${present} / ${total}`} />
+          {native ? (
+            <div className="native-stack">
+              {students.map((s) => (
+                <article key={s.student_id} className="native-card">
+                  <div className="native-card-top">
+                    <div>
+                      <strong>{pick(s.full_name_ar, s.full_name_en)}</strong>
+                      <div className="muted small"><bdi>{s.student_code}</bdi></div>
+                    </div>
+                  </div>
+                  <select className={`status-select status-${s.status || 'absent'}`} value={s.status || 'absent'} onChange={(e) => mark(s.student_id, e.target.value)}>
+                    {['present', 'late', 'excused', 'absent'].map((v) => <option key={v} value={v}>{t('att.s.' + v)}</option>)}
+                  </select>
+                </article>
+              ))}
+            </div>
+          ) : (
           <div className="table-wrap gap-top">
             <table className="table">
               <tbody>
@@ -114,6 +133,7 @@ export default function AttendanceSession() {
               </tbody>
             </table>
           </div>
+          )}
         </div>
       </div>
     </>

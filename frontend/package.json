@@ -8,10 +8,12 @@
     "build": "vite build",
     "build:android": "vite build && npx cap sync android",
     "lint": "oxlint",
+    "test": "node --test src/native/qr.test.js",
     "preview": "vite preview"
   },
   "dependencies": {
     "@capacitor/core": "^8.6.2",
+    "@zxing/browser": "^0.1.5",
     "axios": "^1.21.1",
     "qrcode.react": "^4.2.0",
     "react": "^19.3.1",

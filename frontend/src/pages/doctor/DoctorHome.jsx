@@ -6,6 +6,8 @@ import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import WeeklySchedule from '../../components/WeeklySchedule';
 import { Alert, LoadError, Loading, Stat, Tag } from '../../components/ui';
+import { isNativeApp } from '../../native/platform';
+import { DoctorHomeNative } from '../../native/views';
 import { errorText, hhmm } from '../../utils/format';
 
 export default function DoctorHome() {
@@ -28,6 +30,21 @@ export default function DoctorHome() {
   const open = data.filter((o) => o.open_session_id);
   const pending = data.filter((o) => Number(o.pending_grades) > 0);
   const pendingTotal = data.reduce((n, o) => n + Number(o.pending_grades || 0), 0);
+
+  if (isNativeApp()) {
+    return (
+      <DoctorHomeNative
+        user={user}
+        data={data}
+        items={items}
+        open={open}
+        pending={pending}
+        pendingTotal={pendingTotal}
+        actionError={actionError}
+        onStart={startAttendance}
+      />
+    );
+  }
 
   return (
     <>

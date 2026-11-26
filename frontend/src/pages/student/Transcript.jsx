@@ -2,6 +2,8 @@ import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import Brand from '../../components/Brand';
 import { LoadError, Loading, Tag } from '../../components/ui';
+import { isNativeApp } from '../../native/platform';
+import { TranscriptNative } from '../../native/views';
 
 export default function Transcript() {
   const { t, pick } = useLanguage();
@@ -9,6 +11,7 @@ export default function Transcript() {
   if (loading) return <Loading />;
   if (error || data == null) return <LoadError error={error} onRetry={reload} />;
   const { student: s, semesters, standing } = data;
+  if (isNativeApp()) return <TranscriptNative data={data} />;
 
   return (
     <div className="card transcript">
