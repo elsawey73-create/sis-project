@@ -10,7 +10,8 @@
     "seed": "node src/seed.js",
     "test:api": "node scripts/smoke.js",
     "test:reset": "node scripts/test-password-reset.js",
-    "test:tokens": "node scripts/test-auth-tokens.js"
+    "test:tokens": "node scripts/test-auth-tokens.js",
+    "test:qr": "node scripts/test-qr-attendance.js"
   },
   "keywords": [],
   "author": "",

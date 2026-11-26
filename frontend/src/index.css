@@ -328,6 +328,9 @@ input.num { width: 72px; padding: 6px 8px; }
 
 /* QR */
 .qr-box { display: inline-block; padding: 8px; background: var(--color-qr-bg); border: 1px solid var(--color-border); border-radius: 12px; min-width: 120px; min-height: 120px; }
+.qr-expired { display: flex; align-items: center; justify-content: center; min-height: 200px; max-width: 280px; padding: 24px; color: var(--color-text-secondary); }
+.qr-timer { font-variant-numeric: tabular-nums; font-size: 28px; font-weight: 700; margin: 4px 0 8px; color: var(--color-primary); }
+.qr-actions { justify-content: center; }
 
 /* Transcript */
 .summary-box { display: flex; gap: 24px; flex-wrap: wrap; padding: 14px; background: var(--color-primary-light); border-radius: 10px; color: var(--color-text); }
