@@ -4,6 +4,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import api from '../../api/axios';
 import { useLanguage } from '../../context/LanguageContext';
 import { Alert, LoadError, Loading, Stat } from '../../components/ui';
+import { useFeedback } from '../../context/FeedbackContext';
 import { errorText } from '../../utils/format';
 
 export default function AttendanceSession() {
@@ -14,6 +15,7 @@ export default function AttendanceSession() {
   const [loadError, setLoadError] = useState(null);
   const [tokenError, setTokenError] = useState(null);
   const [error, setError] = useState('');
+  const { toast } = useFeedback();
 
   const loadInfo = useCallback(
     () => api.get(`/attendance/sessions/${id}`)
@@ -57,12 +59,18 @@ export default function AttendanceSession() {
       setTokenError(null);
       loadInfo();
     } catch (e) {
-      setError(errorText(e, t));
+      const text = errorText(e, t);
+      setError(text);
+      toast({ type: 'error', message: text });
     }
   }
   async function mark(studentId, status) {
     try { await api.put(`/attendance/sessions/${id}/students/${studentId}`, { status }); loadInfo(); }
-    catch (e) { setError(errorText(e, t)); }
+    catch (e) {
+      const text = errorText(e, t);
+      setError(text);
+      toast({ type: 'error', message: text });
+    }
   }
 
   if (!info) return loadError ? <LoadError error={loadError} onRetry={loadInfo} /> : <Loading />;

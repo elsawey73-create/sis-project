@@ -3,6 +3,7 @@ import api from '../../api/axios';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import { Alert, FetchBody, LoadError, Tag } from '../../components/ui';
+import { useFeedback } from '../../context/FeedbackContext';
 import { errorText, hhmm } from '../../utils/format';
 
 export default function Registration() {
@@ -18,6 +19,7 @@ export default function Registration() {
   const depts = useFetch('/departments');
   const [msg, setMsg] = useState(null);
   const [busy, setBusy] = useState(false);
+  const { toast } = useFeedback();
 
   const open = !!mine.data?.semester?.registration_open;
 
@@ -26,11 +28,15 @@ export default function Registration() {
     setMsg(null);
     try {
       await fn();
-      setMsg({ type: 'success', text: t(okKey) });
+      const text = t(okKey);
+      setMsg({ type: 'success', text });
+      toast({ type: 'success', message: text });
       offers.reload();
       mine.reload();
     } catch (e) {
-      setMsg({ type: 'error', text: errorText(e, t) });
+      const text = errorText(e, t);
+      setMsg({ type: 'error', text });
+      toast({ type: 'error', message: text });
     } finally {
       setBusy(false);
     }

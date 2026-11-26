@@ -4,6 +4,7 @@ import api from '../../api/axios';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import { Alert, LoadError, Loading, Tag } from '../../components/ui';
+import { useFeedback } from '../../context/FeedbackContext';
 import { errorText, gradeTotal } from '../../utils/format';
 
 const KEYS = ['coursework', 'midterm', 'practical', 'final_exam'];
@@ -15,6 +16,7 @@ export default function OfferingRoster() {
   const sessions = useFetch(`/attendance/offering/${id}/sessions`);
   const [edits, setEdits] = useState({});
   const [msg, setMsg] = useState(null);
+  const { toast } = useFeedback();
 
   if (loading) return <Loading />;
   if (error || data == null) return <LoadError error={error} onRetry={reload} />;
@@ -36,8 +38,14 @@ export default function OfferingRoster() {
       const r = await api.put(`/instructor/offerings/${id}/grades`, { grades });
       setEdits({});
       reload();
-      setMsg({ type: 'success', text: `${t('roster.saved')}: ${r.data.saved}` });
-    } catch (e) { setMsg({ type: 'error', text: errorText(e, t) }); }
+      const text = `${t('roster.saved')}: ${r.data.saved}`;
+      setMsg({ type: 'success', text });
+      toast({ type: 'success', message: text });
+    } catch (e) {
+      const text = errorText(e, t);
+      setMsg({ type: 'error', text });
+      toast({ type: 'error', message: text });
+    }
   }
 
   async function publish() {
@@ -45,8 +53,14 @@ export default function OfferingRoster() {
     try {
       const r = await api.post(`/instructor/offerings/${id}/grades/publish`);
       reload();
-      setMsg({ type: 'success', text: `${t('roster.published')}: ${r.data.published} · ${t('roster.pending')}: ${r.data.pending}` });
-    } catch (e) { setMsg({ type: 'error', text: errorText(e, t) }); }
+      const text = `${t('roster.published')}: ${r.data.published} · ${t('roster.pending')}: ${r.data.pending}`;
+      setMsg({ type: 'success', text });
+      toast({ type: 'success', message: text });
+    } catch (e) {
+      const text = errorText(e, t);
+      setMsg({ type: 'error', text });
+      toast({ type: 'error', message: text });
+    }
   }
 
   return (

@@ -1,9 +1,11 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { LanguageProvider, useLanguage } from './context/LanguageContext';
+import { LanguageProvider } from './context/LanguageContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { FeedbackProvider } from './context/FeedbackContext';
 import { AuthProvider, useAuth, homeByRole } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
+import { ScreenLoading } from './components/ui';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
@@ -28,8 +30,7 @@ import Notifications from './pages/shared/Notifications';
 // "/" sends each role to its home page.
 function RootRedirect() {
   const { user, loading } = useAuth();
-  const { t } = useLanguage();
-  if (loading) return <div className="center">{t('common.loading')}</div>;
+  if (loading) return <ScreenLoading />;
   return <Navigate to={user ? homeByRole[user.role] : '/login'} replace />;
 }
 
@@ -37,6 +38,7 @@ export default function App() {
   return (
     <LanguageProvider>
       <ThemeProvider>
+        <FeedbackProvider>
         <AuthProvider>
           <BrowserRouter>
             <Routes>
@@ -93,6 +95,7 @@ export default function App() {
             </Routes>
           </BrowserRouter>
         </AuthProvider>
+        </FeedbackProvider>
       </ThemeProvider>
     </LanguageProvider>
   );

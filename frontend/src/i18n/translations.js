@@ -17,6 +17,10 @@ export const translations = {
     'common.edit': 'تعديل',
     'common.delete': 'حذف',
     'common.confirm': 'متأكد؟',
+    'common.confirmTitle': 'تأكيد',
+    'common.confirmAction': 'تأكيد',
+    'common.close': 'إغلاق',
+    'common.required': 'هذا الحقل مطلوب',
     'common.retry': 'إعادة المحاولة',
 
     'login.title': 'تسجيل الدخول',
@@ -60,6 +64,8 @@ export const translations = {
     'nav.manageCatalog': 'إدارة المقررات',
     'nav.offerings': 'المواد المطروحة',
     'nav.users': 'المستخدمين',
+    'nav.menu': 'القائمة',
+    'nav.closeMenu': 'إغلاق القائمة',
 
     'role.student': 'طالب',
     'role.instructor': 'دكتور',
@@ -187,11 +193,13 @@ export const translations = {
     'msg.send': 'إرسال',
     'msg.select': 'اختار محادثة أو ابدأ رسالة جديدة',
     'msg.reply': 'اكتب ردك...',
+    'msg.sent': 'تم الإرسال',
 
     'notif.message': 'رسالة جديدة من',
     'notif.grades': 'تم نشر درجات',
     'notif.readAll': 'تعليم الكل كمقروء',
     'notif.none': 'مفيش إشعارات',
+    'toast.dismiss': 'إخفاء',
 
     'admin.currentSemester': 'الترم الحالي',
     'admin.departments': 'الأقسام',
@@ -276,6 +284,10 @@ export const translations = {
     'common.edit': 'Edit',
     'common.delete': 'Delete',
     'common.confirm': 'Are you sure?',
+    'common.confirmTitle': 'Please confirm',
+    'common.confirmAction': 'Confirm',
+    'common.close': 'Close',
+    'common.required': 'This field is required',
     'common.retry': 'Try again',
 
     'login.title': 'Sign in',
@@ -319,6 +331,8 @@ export const translations = {
     'nav.manageCatalog': 'Manage Courses',
     'nav.offerings': 'Course Offerings',
     'nav.users': 'Users',
+    'nav.menu': 'Menu',
+    'nav.closeMenu': 'Close menu',
 
     'role.student': 'Student',
     'role.instructor': 'Instructor',
@@ -446,11 +460,13 @@ export const translations = {
     'msg.send': 'Send',
     'msg.select': 'Select a conversation or start a new message',
     'msg.reply': 'Write your reply...',
+    'msg.sent': 'Sent',
 
     'notif.message': 'New message from',
     'notif.grades': 'Grades published for',
     'notif.readAll': 'Mark all as read',
     'notif.none': 'No notifications',
+    'toast.dismiss': 'Dismiss',
 
     'admin.currentSemester': 'Current semester',
     'admin.departments': 'Departments',

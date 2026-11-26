@@ -6,6 +6,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import WeeklySchedule from '../../components/WeeklySchedule';
 import { Alert, LoadError, Loading, Stat, Tag } from '../../components/ui';
+import { useFeedback } from '../../context/FeedbackContext';
 import { errorText, hhmm } from '../../utils/format';
 
 export default function DoctorHome() {
@@ -14,12 +15,17 @@ export default function DoctorHome() {
   const navigate = useNavigate();
   const { data, error, loading, reload } = useFetch('/instructor/offerings');
   const [actionError, setActionError] = useState('');
+  const { toast } = useFeedback();
 
   async function startAttendance(o) {
     try {
       const r = await api.post('/attendance/sessions', { offering_id: o.id });
       navigate(`/doctor/attendance/${r.data.id}`);
-    } catch (e) { setActionError(errorText(e, t)); }
+    } catch (e) {
+      const text = errorText(e, t);
+      setActionError(text);
+      toast({ type: 'error', message: text });
+    }
   }
 
   if (loading) return <Loading />;

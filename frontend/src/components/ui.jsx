@@ -19,9 +19,27 @@ export function Stat({ label, value, hint }) {
 export function Loading() {
   const { t } = useLanguage();
   return (
-    <div className="muted pad loading-line" role="status">
-      <span className="spinner" aria-hidden="true" />
-      {t('common.loading')}
+    <div className="skeleton" role="status" aria-live="polite">
+      <span className="sr-only">{t('common.loading')}</span>
+      <span className="skeleton-line" />
+      <span className="skeleton-line skeleton-line-mid" />
+      <span className="skeleton-line skeleton-line-short" />
+    </div>
+  );
+}
+
+export function ScreenLoading() {
+  const { t } = useLanguage();
+  return (
+    <div className="center">
+      <div className="card splash-card" role="status" aria-live="polite">
+        <span className="spinner spinner-lg" aria-hidden="true" />
+        <p className="muted m0">{t('common.loading')}</p>
+        <div className="skeleton" aria-hidden="true">
+          <span className="skeleton-line" />
+          <span className="skeleton-line skeleton-line-short" />
+        </div>
+      </div>
     </div>
   );
 }
