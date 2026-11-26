@@ -39,7 +39,7 @@ Written by seed and `POST /api/admin/users`. There is no public signup route.
 | `email` | Optional. Stored lowercased and trimmed. Seed does not set it |
 | `role` | `'student'`, `'instructor'`, or `'admin'` |
 | `preferred_lang` | `'ar'` or `'en'`, updated by `PATCH /api/auth/language`. Seed does not set it |
-| `token_version` | Integer, default 0. Stored in the JWT as `tv`. Logout, admin password reset, and public password reset increment it |
+| `token_version` | Integer, default 0. Stored in the access JWT and the refresh JWT as `tv`. Logout, admin password reset, and public password reset increment it |
 | `created_at` | Selected by `GET /api/admin/users`. Default `CURRENT_TIMESTAMP` in `001_init.sql` |
 
 Duplicate `login_id` or email surfaces as MySQL `ER_DUP_ENTRY`, which admin create returns as `DUPLICATE`.
