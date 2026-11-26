@@ -299,9 +299,9 @@ function SessionSheet({ onClose }) {
     setBusy(true);
     setError('');
     try {
-      const response = await api.post('/attendance/sessions', { offering_id: offering.id });
+      const response = await api.post('/attendance/qr', { class_id: offering.id });
       onClose();
-      navigate(`/doctor/attendance/${response.data.id}`);
+      navigate(`/doctor/attendance/${response.data.session_id}`);
     } catch (err) {
       setError(errorText(err, t));
       setBusy(false);
@@ -324,7 +324,7 @@ function SessionSheet({ onClose }) {
               {offering.open_session_id && <span className="tag tag-ok">{t('att.live')}</span>}
             </div>
             <button type="button" className="b b-primary" disabled={busy} onClick={() => start(offering)}>
-              {offering.open_session_id ? t('doc.continueAtt') : t('doc.startAtt')}
+              {offering.open_session_id ? t('doc.continueAtt') : t('doc.generateQr')}
             </button>
           </article>
         ))}

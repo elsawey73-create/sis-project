@@ -72,7 +72,7 @@ Nav links in `Layout`:
 - Instructor: my courses, catalog, plus messages.
 - Admin: dashboard, manage catalog, offerings, users, catalog. No messages link.
 
-The bell goes to `/notifications` for every role. Logout clears the token and sets `user` to null. The router then sends protected pages to `/login` because `user` is gone. Logout does not navigate by itself. The next render of `ProtectedRoute` does.
+The bell goes to `/notifications` for every role. Logout clears the access token and the refresh token and sets `user` to null. The router then sends protected pages to `/login` because `user` is gone. Logout does not navigate by itself. The next render of `ProtectedRoute` does.
 
 ## API client
 
@@ -84,7 +84,7 @@ baseURL = VITE_NATIVE_API_URL, or the production API, when Capacitor.isNativePla
 
 A production website build without `VITE_API_URL` throws `VITE_API_URL is required for a production build.` when this module loads. The value must include the `/api` suffix. Vite inlines it at `npm run build`. The native app does not use `VITE_API_URL`. With `VITE_NATIVE_API_URL` unset it calls `https://sis-project-production-8d2536d4.up.railway.app/api`.
 
-Request interceptor sets `Authorization` from `localStorage.token` when present. There is no response interceptor. 401 handling is per page, except the initial `/auth/me` failure which deletes the token.
+Request interceptor sets `Authorization` from `localStorage.token` when present. The response interceptor, on a 401 from any request other than `/auth/login` and `/auth/refresh`, posts `localStorage.refresh_token` to `/auth/refresh` when that key exists, stores the new access token, and retries the original request once. Concurrent 401s share that one call. A 401 with no refresh token, or a failed refresh, is still the caller's error. The initial `/auth/me` failure deletes `token` and `refresh_token`.
 
 ## useFetch
 

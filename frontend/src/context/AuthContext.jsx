@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import api from '../api/axios';
+import api, { storeSession, clearSession } from '../api/axios';
 import { useLanguage, readStoredLang } from './LanguageContext';
 
 const AuthContext = createContext(null);
@@ -21,13 +21,13 @@ export function AuthProvider({ children }) {
         setUser(res.data);
         if (res.data.preferred_lang) setLang(res.data.preferred_lang);
       })
-      .catch(() => localStorage.removeItem('token')) // Expired or rejected token.
+      .catch(() => clearSession()) // Expired or rejected token.
       .finally(() => setLoading(false));
   }, [setLang]);
 
   async function login(loginId, password) {
     const res = await api.post('/auth/login', { login_id: loginId, password });
-    localStorage.setItem('token', res.data.token);
+    storeSession(res.data.token, res.data.refresh_token);
     try {
       const me = await api.get('/auth/me');
       const u = me.data;
@@ -38,7 +38,7 @@ export function AuthProvider({ children }) {
       else if (u.preferred_lang) setLang(u.preferred_lang);
       return u;
     } catch (err) {
-      localStorage.removeItem('token');
+      clearSession();
       setUser(null);
       throw err;
     }
@@ -48,9 +48,9 @@ export function AuthProvider({ children }) {
     try {
       await api.post('/auth/logout');
     } catch {
-      /* Clear the local token even when the server rejects logout. */
+      /* Clear the local session even when the server rejects logout. */
     }
-    localStorage.removeItem('token');
+    clearSession();
     setUser(null);
   }
 

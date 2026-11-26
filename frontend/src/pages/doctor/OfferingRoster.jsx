@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/axios';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
@@ -11,11 +11,24 @@ const KEYS = ['coursework', 'midterm', 'practical', 'final_exam'];
 
 export default function OfferingRoster() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { t, pick } = useLanguage();
   const { data, error, loading, reload } = useFetch(`/instructor/offerings/${id}/roster`);
   const sessions = useFetch(`/attendance/offering/${id}/sessions`);
   const [edits, setEdits] = useState({});
   const [msg, setMsg] = useState(null);
+  const [qrBusy, setQrBusy] = useState(null);
+
+  async function openQr(sessionId) {
+    setQrBusy(sessionId);
+    try {
+      await api.post(`/attendance/sessions/${sessionId}/qr`);
+      navigate(`/doctor/attendance/${sessionId}`);
+    } catch (e) {
+      setMsg({ type: 'error', text: errorText(e, t) });
+      setQrBusy(null);
+    }
+  }
 
   if (loading) return <Loading />;
   if (error || data == null) return <LoadError error={error} onRetry={reload} />;
@@ -144,7 +157,11 @@ export default function OfferingRoster() {
                   <strong>{s.session_date}</strong>
                   <div className="muted small">{t('att.attended')}: {s.present_count}</div>
                 </div>
-                <Link to={`/doctor/attendance/${s.id}`}>{s.status === 'open' ? t('att.live') : t('att.view')}</Link>
+                {s.status === 'open' ? (
+                  <button type="button" className="b b-primary" disabled={qrBusy === s.id} onClick={() => openQr(s.id)}>{t('doc.generateQr')}</button>
+                ) : (
+                  <Link to={`/doctor/attendance/${s.id}`}>{t('att.view')}</Link>
+                )}
               </article>
             ))}
           </div>
@@ -157,7 +174,13 @@ export default function OfferingRoster() {
                 {sessions.data.map((s) => (
                   <tr key={s.id}>
                     <td>{s.id}</td><td>{s.session_date}</td><td>{s.present_count}</td>
-                    <td><Link to={`/doctor/attendance/${s.id}`}>{s.status === 'open' ? t('att.live') : t('att.view')}</Link></td>
+                    <td className="actions">
+                      {s.status === 'open' ? (
+                        <button className="b b-primary" disabled={qrBusy === s.id} onClick={() => openQr(s.id)}>{t('doc.generateQr')}</button>
+                      ) : (
+                        <Link to={`/doctor/attendance/${s.id}`}>{t('att.view')}</Link>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

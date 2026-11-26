@@ -5,6 +5,7 @@ const db = require('../config/db');
 const { withTx } = require('../utils/tx');
 const { rateLimit, clientIp } = require('../utils/rateLimit');
 const { sendPasswordResetEmail } = require('../services/mail');
+const { signAccessToken, signRefreshToken, refreshSecret, isJwtError } = require('../utils/tokens');
 
 const RESET_TTL_MINUTES = 60;
 const RESET_WINDOW_MS = 15 * 60 * 1000;
@@ -36,12 +37,11 @@ function limited(res) {
   return res.status(429).json({ error: 'RATE_LIMITED' });
 }
 
-function signToken(user) {
-  return jwt.sign(
-    { id: user.id, role: user.role, tv: Number(user.token_version || 0) },
-    process.env.JWT_SECRET,
-    { expiresIn: '7d' }
-  );
+function issueSession(user) {
+  return {
+    token: signAccessToken(user),
+    refresh_token: signRefreshToken(user),
+  };
 }
 
 function publicUser(u) {
@@ -71,7 +71,40 @@ exports.login = async (req, res) => {
   const ok = user && (await bcrypt.compare(password, user.password_hash));
   if (!ok) return res.status(401).json({ error: 'INVALID_CREDENTIALS' });
 
-  res.json({ token: signToken(user), user: publicUser(user) });
+  res.json({ ...issueSession(user), user: publicUser(user) });
+};
+
+// POST /api/auth/refresh. Body: { refresh_token }. Returns a new access token.
+// The refresh token is in the JSON body so a Capacitor WebView can call the
+// API cross-origin without a cookie. Access tokens are rejected here.
+exports.refresh = async (req, res) => {
+  const raw = req.body && req.body.refresh_token;
+  const token = typeof raw === 'string' ? raw.trim() : '';
+  if (!token) return res.status(401).json({ error: 'UNAUTHENTICATED' });
+
+  let payload;
+  try {
+    payload = jwt.verify(token, refreshSecret());
+  } catch (err) {
+    if (isJwtError(err)) return res.status(401).json({ error: 'SESSION_EXPIRED' });
+    throw err;
+  }
+  if (!payload || payload.typ !== 'refresh') {
+    return res.status(401).json({ error: 'SESSION_EXPIRED' });
+  }
+
+  const [rows] = await db.query('SELECT token_version, role FROM users WHERE id = ?', [payload.id]);
+  if (!rows[0] || Number(rows[0].token_version) !== Number(payload.tv)) {
+    return res.status(401).json({ error: 'SESSION_EXPIRED' });
+  }
+
+  res.json({
+    token: signAccessToken({
+      id: payload.id,
+      role: rows[0].role,
+      token_version: rows[0].token_version,
+    }),
+  });
 };
 
 // GET /api/auth/me

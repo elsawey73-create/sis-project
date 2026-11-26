@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { Capacitor } from '@capacitor/core';
+import { createSessionRefresh, shouldRefresh, ACCESS_KEY, REFRESH_KEY } from './refreshSession';
 
 // Vite inlines VITE_API_URL at build time. Include the /api suffix.
 // `npm run dev` falls back to the page hostname on port 5000 so a phone on the
@@ -26,10 +27,46 @@ const api = axios.create({
   baseURL: apiBaseUrl(),
 });
 
+// One refresh for every 401 that arrives while it is in flight.
+// The refresh token goes in the JSON body. A cookie would not be sent from the
+// Capacitor WebView (https://localhost) to the Railway API.
+const session = createSessionRefresh({
+  storage: localStorage,
+  postRefresh(refreshToken) {
+    const base = String(api.defaults.baseURL || '').replace(/\/+$/, '');
+    return axios.post(`${base}/auth/refresh`, { refresh_token: refreshToken });
+  },
+});
+
+export const storeSession = session.storeSession;
+export const clearSession = session.clearSession;
+
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem(ACCESS_KEY);
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const original = error.config;
+    const status = error.response && error.response.status;
+    // No refresh token: leave the 401 for the existing logged-out path.
+    if (!shouldRefresh(original, status, localStorage.getItem(REFRESH_KEY))) {
+      return Promise.reject(error);
+    }
+
+    original._retry = true;
+    try {
+      await session.refreshAccessToken();
+      return api(original);
+    } catch {
+      // Failed refresh, or a refresh that lost a race with login/logout.
+      // Callers keep the existing 401 path (the initial /auth/me clears the session).
+      return Promise.reject(error);
+    }
+  }
+);
 
 export default api;

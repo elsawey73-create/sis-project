@@ -491,7 +491,7 @@ export function DoctorHomeNative({ user, data, items, open, pending, pendingTota
                 <div className="native-actions">
                   <Link className="b b-ghost" to={`/doctor/offerings/${offering.id}`}>{t('doc.gradesStudents')}</Link>
                   <button type="button" className="b b-primary" onClick={() => onStart(offering)}>
-                    {offering.open_session_id ? t('doc.continueAtt') : t('doc.startAtt')}
+                    {offering.open_session_id ? t('doc.continueAtt') : t('doc.generateQr')}
                   </button>
                 </div>
               </article>
