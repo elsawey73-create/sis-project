@@ -4,6 +4,8 @@ import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import { Alert, FetchBody, LoadError, Tag } from '../../components/ui';
 import { useFeedback } from '../../context/FeedbackContext';
+import { isNativeApp } from '../../native/platform';
+import { RegistrationNative } from '../../native/views';
 import { errorText, hhmm } from '../../utils/format';
 
 export default function Registration() {
@@ -55,6 +57,25 @@ export default function Registration() {
       <button className="b b-primary" disabled={busy || !open} onClick={() => act(() => api.post('/enrollments', { offering_id: o.id }), 'reg.done')}>
         {t('reg.register')}
       </button>
+    );
+  }
+
+  if (isNativeApp()) {
+    return (
+      <RegistrationNative
+        q={q}
+        setQ={setQ}
+        dept={dept}
+        setDept={setDept}
+        depts={depts}
+        offers={offers}
+        mine={mine}
+        msg={msg}
+        open={open}
+        busy={busy}
+        onDrop={(course) => act(() => api.delete(`/enrollments/${course.enrollment_id}`), 'reg.dropped')}
+        renderAction={action}
+      />
     );
   }
 

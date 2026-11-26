@@ -2,6 +2,8 @@ import { Fragment, useState } from 'react';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import { FetchBody, LoadError, Tag } from '../../components/ui';
+import { isNativeApp } from '../../native/platform';
+import { CatalogNative } from '../../native/views';
 
 export default function Catalog() {
   const { t, pick } = useLanguage();
@@ -13,6 +15,21 @@ export default function Catalog() {
   if (dept) params.set('department_id', dept);
   const courses = useFetch(`/courses?${params}`);
   const depts = useFetch('/departments');
+
+  if (isNativeApp()) {
+    return (
+      <CatalogNative
+        q={q}
+        setQ={setQ}
+        dept={dept}
+        setDept={setDept}
+        courses={courses}
+        depts={depts}
+        open={open}
+        setOpen={setOpen}
+      />
+    );
+  }
 
   return (
     <div className="card">

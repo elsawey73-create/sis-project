@@ -5,17 +5,27 @@ import api from '../../api/axios';
 import { useLanguage } from '../../context/LanguageContext';
 import { Alert, LoadError, Loading, Stat } from '../../components/ui';
 import { useFeedback } from '../../context/FeedbackContext';
+import { isNativeApp } from '../../native/platform';
 import { errorText } from '../../utils/format';
+
+function formatRemaining(totalSeconds) {
+  const s = Math.max(0, Number(totalSeconds) || 0);
+  const minutes = Math.floor(s / 60);
+  const seconds = s % 60;
+  return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
 
 export default function AttendanceSession() {
   const { id } = useParams();
   const { t, pick } = useLanguage();
   const [info, setInfo] = useState(null);
-  const [token, setToken] = useState(null);
+  const [qr, setQr] = useState(null);
+  const [now, setNow] = useState(() => Date.now());
   const [loadError, setLoadError] = useState(null);
   const [tokenError, setTokenError] = useState(null);
   const [error, setError] = useState('');
   const { toast } = useFeedback();
+  const [refreshing, setRefreshing] = useState(false);
 
   const loadInfo = useCallback(
     () => api.get(`/attendance/sessions/${id}`)
@@ -24,12 +34,33 @@ export default function AttendanceSession() {
     [id]
   );
 
-  const refreshToken = useCallback(
-    () => api.get(`/attendance/sessions/${id}/token`)
-      .then((r) => { setToken(r.data.token); setTokenError(null); })
-      .catch((e) => setTokenError(e)),
-    [id]
-  );
+  const applyQr = useCallback((data) => {
+    const expiresIn = Math.max(0, Number(data.expires_in) || 0);
+    const expired = !!data.expired || expiresIn <= 0 || !data.qr_token;
+    const issuedAt = Date.now();
+    setNow(issuedAt);
+    setQr({
+      token: expired ? null : data.qr_token,
+      expired,
+      expiresIn,
+      deadline: issuedAt + expiresIn * 1000,
+    });
+    setTokenError(null);
+  }, []);
+
+  const loadQr = useCallback(() => {
+    api.get(`/attendance/sessions/${id}/qr`)
+      .then((r) => applyQr(r.data))
+      .catch((e) => {
+        if (e.response?.status !== 404) {
+          setTokenError(e);
+          return;
+        }
+        api.post(`/attendance/sessions/${id}/qr`)
+          .then((r) => applyQr(r.data))
+          .catch((createError) => setTokenError(createError));
+      });
+  }, [id, applyQr]);
 
   // Refresh the roster every 4 seconds.
   useEffect(() => {
@@ -38,24 +69,35 @@ export default function AttendanceSession() {
     return () => clearInterval(i);
   }, [loadInfo]);
 
+  useEffect(() => {
+    const i = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(i);
+  }, []);
+
   const open = info?.session.status === 'open';
 
-  // Replace the QR every 20 seconds so a photo of it expires quickly.
   useEffect(() => {
     if (!open) return undefined;
-    let alive = true;
-    const get = () => api.get(`/attendance/sessions/${id}/token`)
-      .then((r) => { if (!alive) return; setToken(r.data.token); setTokenError(null); })
-      .catch((e) => { if (alive) setTokenError(e); });
-    get();
-    const i = setInterval(get, 20000);
-    return () => { alive = false; clearInterval(i); };
-  }, [open, id]);
+    loadQr();
+    return undefined;
+  }, [open, loadQr]);
+
+  async function refreshQr() {
+    setRefreshing(true);
+    try {
+      const r = await api.post(`/attendance/sessions/${id}/qr/refresh`);
+      applyQr(r.data);
+    } catch (e) {
+      setTokenError(e);
+    } finally {
+      setRefreshing(false);
+    }
+  }
 
   async function close() {
     try {
       await api.post(`/attendance/sessions/${id}/close`);
-      setToken(null);
+      setQr(null);
       setTokenError(null);
       loadInfo();
     } catch (e) {
@@ -75,8 +117,14 @@ export default function AttendanceSession() {
 
   if (!info) return loadError ? <LoadError error={loadError} onRetry={loadInfo} /> : <Loading />;
   const { session, students, present, total } = info;
-  const url = token ? `${window.location.origin}/attend?s=${id}&t=${token}` : '';
-  const phoneCannotOpen = ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
+  const native = isNativeApp();
+  const remaining = qr && qr.token && !qr.expired
+    ? Math.min(qr.expiresIn, Math.max(0, Math.floor((qr.deadline - now) / 1000)))
+    : 0;
+  const timedOut = !!(qr && !qr.expired && (now >= qr.deadline || remaining <= 0));
+  const showCode = !!(qr && qr.token && !qr.expired && !timedOut);
+  const url = showCode ? `${window.location.origin}/attend?s=${id}&t=${qr.token}` : '';
+  const phoneCannotOpen = !native && ['localhost', '127.0.0.1', '::1'].includes(window.location.hostname);
 
   return (
     <>
@@ -89,22 +137,56 @@ export default function AttendanceSession() {
         <Alert>{error}</Alert>
       </div>
 
-      <div className="grid-qr gap-top">
-        <div className="card center-text">
+      <div className={native ? 'native-stack' : 'grid-qr gap-top'}>
+        <div className={native ? 'native-card center-text' : 'card center-text'}>
           {open ? (
             <>
               {phoneCannotOpen && <Alert type="warn">{t('att.phoneHost')}</Alert>}
-              <div className="qr-box">{url ? <QRCodeSVG value={url} size={280} includeMargin bgColor="#FFFFFF" fgColor="#0F172A" /> : tokenError ? null : <Loading />}</div>
-              {tokenError && <LoadError error={tokenError} onRetry={refreshToken} />}
-              <p className="muted small">{t('att.qrHint')}</p>
-              <button className="b b-danger" onClick={close}>{t('att.close')}</button>
+              {showCode ? (
+                <div className="qr-box">
+                  <QRCodeSVG value={url} size={280} includeMargin bgColor="#FFFFFF" fgColor="#0F172A" />
+                </div>
+              ) : (qr?.expired || timedOut) ? (
+                <div className="qr-box qr-expired"><p className="m0">{t('att.qrExpired')}</p></div>
+              ) : tokenError ? null : (
+                <div className="qr-box"><Loading /></div>
+              )}
+              {showCode && (
+                <>
+                  <p className="muted small qr-timer-label">{t('att.qrRemaining')}</p>
+                  <p className="qr-timer">{formatRemaining(remaining)}</p>
+                </>
+              )}
+              {tokenError && <LoadError error={tokenError} onRetry={showCode ? refreshQr : loadQr} />}
+              <p className="muted small">{native ? t('att.qrHintApp') : t('att.qrHint')}</p>
+              <div className="row qr-actions">
+                <button className="b b-ghost" disabled={refreshing} onClick={refreshQr}>{t('att.refreshQr')}</button>
+                <button className="b b-danger" onClick={close}>{t('att.close')}</button>
+              </div>
             </>
           ) : (
             <p className="muted">🔒 {t('att.closed')}</p>
           )}
         </div>
-        <div className="card">
+        <div className={native ? 'native-stack' : 'card'}>
           <Stat label={t('att.attended')} value={`${present} / ${total}`} />
+          {native ? (
+            <div className="native-stack">
+              {students.map((s) => (
+                <article key={s.student_id} className="native-card">
+                  <div className="native-card-top">
+                    <div>
+                      <strong>{pick(s.full_name_ar, s.full_name_en)}</strong>
+                      <div className="muted small"><bdi>{s.student_code}</bdi></div>
+                    </div>
+                  </div>
+                  <select className={`status-select status-${s.status || 'absent'}`} value={s.status || 'absent'} onChange={(e) => mark(s.student_id, e.target.value)}>
+                    {['present', 'late', 'excused', 'absent'].map((v) => <option key={v} value={v}>{t('att.s.' + v)}</option>)}
+                  </select>
+                </article>
+              ))}
+            </div>
+          ) : (
           <div className="table-wrap gap-top">
             <table className="table">
               <tbody>
@@ -122,6 +204,7 @@ export default function AttendanceSession() {
               </tbody>
             </table>
           </div>
+          )}
         </div>
       </div>
     </>

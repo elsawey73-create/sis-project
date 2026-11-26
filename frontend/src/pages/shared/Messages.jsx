@@ -7,6 +7,7 @@ import useFetch from '../../hooks/useFetch';
 import { Alert, FetchBody, Field, LoadError } from '../../components/ui';
 import { useFeedback } from '../../context/FeedbackContext';
 import { prefersReducedMotion } from '../../utils/motion';
+import { isNativeApp } from '../../native/platform';
 import { errorText } from '../../utils/format';
 
 export default function Messages() {
@@ -68,8 +69,11 @@ export default function Messages() {
     finally { setSending(false); }
   }
 
+  const native = isNativeApp();
+  const showThread = Boolean(id || composing);
+
   return (
-    <div className="msg-layout">
+    <div className={native ? `msg-layout native-msgs${showThread ? ' is-thread' : ' is-list'}` : 'msg-layout'}>
       <div className="card msg-list">
         <button className="b b-primary full" onClick={() => { setComposing(true); navigate('/messages'); }}>✉️ {t('msg.new')}</button>
         <FetchBody loading={threads.loading} error={threads.error} data={threads.data} onRetry={threads.reload}>
@@ -92,6 +96,9 @@ export default function Messages() {
       </div>
 
       <div className="card msg-view" key={composing ? 'new' : (id || 'none')}>
+        {native && showThread && (
+          <button type="button" className="b b-ghost gap-bottom" onClick={() => { setComposing(false); navigate('/messages'); }}>{t('native.back')}</button>
+        )}
         <Alert>{error}</Alert>
         {composing && contacts.error && <LoadError error={contacts.error} onRetry={contacts.reload} />}
         {composing && (

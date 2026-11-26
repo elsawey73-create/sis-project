@@ -1,27 +1,44 @@
 import { useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import api from '../../api/axios';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import { Alert, LoadError, Loading, Tag } from '../../components/ui';
 import { useFeedback } from '../../context/FeedbackContext';
+import { isNativeApp } from '../../native/platform';
 import { errorText, gradeTotal } from '../../utils/format';
 
 const KEYS = ['coursework', 'midterm', 'practical', 'final_exam'];
 
 export default function OfferingRoster() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { t, pick } = useLanguage();
   const { data, error, loading, reload } = useFetch(`/instructor/offerings/${id}/roster`);
   const sessions = useFetch(`/attendance/offering/${id}/sessions`);
   const [edits, setEdits] = useState({});
   const [msg, setMsg] = useState(null);
   const { toast } = useFeedback();
+  const [qrBusy, setQrBusy] = useState(null);
+
+  async function openQr(sessionId) {
+    setQrBusy(sessionId);
+    try {
+      await api.post(`/attendance/sessions/${sessionId}/qr`);
+      navigate(`/doctor/attendance/${sessionId}`);
+    } catch (e) {
+      const text = errorText(e, t);
+      setMsg({ type: 'error', text });
+      toast({ type: 'error', message: text });
+      setQrBusy(null);
+    }
+  }
 
   if (loading) return <Loading />;
   if (error || data == null) return <LoadError error={error} onRetry={reload} />;
   const { offering, max, students, total_sessions } = data;
   const hasPrac = !!offering.has_practical;
+  const native = isNativeApp();
   const val = (s, k) => edits[s.enrollment_id]?.[k] ?? s[k] ?? '';
   const edit = (s, k, v) => setEdits({ ...edits, [s.enrollment_id]: { ...edits[s.enrollment_id], [k]: v } });
   const dirty = Object.keys(edits).length > 0;
@@ -73,6 +90,39 @@ export default function OfferingRoster() {
         <Alert type={msg?.type}>{msg?.text}</Alert>
         <p className="muted small">{t('roster.hint')}</p>
 
+        {native ? (
+          <div className="native-stack">
+            {students.length === 0 && <p className="native-empty muted">{t('reg.none')}</p>}
+            {students.map((s) => {
+              const row = {};
+              KEYS.forEach((k) => (row[k] = val(s, k)));
+              const total = gradeTotal(row, hasPrac);
+              return (
+                <article key={s.enrollment_id} className="native-card">
+                  <div className="native-card-top">
+                    <div>
+                      <strong>{pick(s.full_name_ar, s.full_name_en)}</strong>
+                      <div className="muted small"><bdi>{s.student_code}</bdi> · {t('att.attended')} {s.attended}/{total_sessions}</div>
+                    </div>
+                    {s.published ? <Tag kind="ok">{t('roster.live')}</Tag> : <Tag kind="muted">{t('roster.draft')}</Tag>}
+                  </div>
+                  <div className="native-score-grid">
+                    {KEYS.filter((k) => hasPrac || k !== 'practical').map((k) => (
+                      <label key={k} className="field">
+                        <span>{t(k === 'final_exam' ? 'grade.final' : k === 'coursework' ? 'grade.coursework' : k === 'midterm' ? 'grade.midterm' : 'grade.practical')} /{max[k]}</span>
+                        <input className="num" type="number" min="0" max={max[k]} step="0.5" value={val(s, k)} onChange={(e) => edit(s, k, e.target.value)} />
+                      </label>
+                    ))}
+                  </div>
+                  <div className="native-card-top">
+                    <span>{t('grade.total')}: <strong>{total ?? '—'}</strong></span>
+                    <span>{t('grade.letter')}: {s.letter ?? '—'}</span>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
         <div className="table-wrap">
           <table className="table grades-table">
             <thead>
@@ -105,6 +155,7 @@ export default function OfferingRoster() {
             </tbody>
           </table>
         </div>
+        )}
         <div className="toolbar">
           <button className="b b-primary" disabled={!dirty} onClick={save}>{t('roster.save')}</button>
           <button className="b b-ghost" disabled={dirty} onClick={publish}>{t('roster.publish')}</button>
@@ -113,7 +164,24 @@ export default function OfferingRoster() {
 
       <div className="card gap-top">
         <h3 className="m0">{t('att.history')}</h3>
-        {sessions.loading ? <Loading /> : sessions.error || sessions.data == null ? <LoadError error={sessions.error} onRetry={sessions.reload} /> : (
+        {sessions.loading ? <Loading /> : sessions.error || sessions.data == null ? <LoadError error={sessions.error} onRetry={sessions.reload} /> : native ? (
+          <div className="native-stack gap-top">
+            {sessions.data.length === 0 && <p className="native-empty muted">{t('reg.none')}</p>}
+            {sessions.data.map((s) => (
+              <article key={s.id} className="native-card native-card-top">
+                <div>
+                  <strong>{s.session_date}</strong>
+                  <div className="muted small">{t('att.attended')}: {s.present_count}</div>
+                </div>
+                {s.status === 'open' ? (
+                  <button type="button" className="b b-primary" disabled={qrBusy === s.id} onClick={() => openQr(s.id)}>{t('doc.generateQr')}</button>
+                ) : (
+                  <Link to={`/doctor/attendance/${s.id}`}>{t('att.view')}</Link>
+                )}
+              </article>
+            ))}
+          </div>
+        ) : (
           <div className="table-wrap">
             <table className="table">
               <thead><tr><th>#</th><th>{t('att.date')}</th><th>{t('att.attended')}</th><th /></tr></thead>
@@ -122,7 +190,13 @@ export default function OfferingRoster() {
                 {sessions.data.map((s) => (
                   <tr key={s.id}>
                     <td>{s.id}</td><td>{s.session_date}</td><td>{s.present_count}</td>
-                    <td><Link to={`/doctor/attendance/${s.id}`}>{s.status === 'open' ? t('att.live') : t('att.view')}</Link></td>
+                    <td className="actions">
+                      {s.status === 'open' ? (
+                        <button className="b b-primary" disabled={qrBusy === s.id} onClick={() => openQr(s.id)}>{t('doc.generateQr')}</button>
+                      ) : (
+                        <Link to={`/doctor/attendance/${s.id}`}>{t('att.view')}</Link>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>

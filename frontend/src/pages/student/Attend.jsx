@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import api from '../../api/axios';
 import { useLanguage } from '../../context/LanguageContext';
 import { Alert, Loading } from '../../components/ui';
+import { isNativeApp, openScanner } from '../../native/platform';
 import { errorText } from '../../utils/format';
 
 // Page opened by the QR code: /attend?s=<session>&t=<token>
@@ -34,7 +35,10 @@ export default function Attend() {
     <div className="card center-card">
       <h2 className="m0">{t('nav.attendance')}</h2>
       {state.status === 'loading' && <Loading />}
-      {state.status === 'none' && <Alert type="info">{t('att.howto')}</Alert>}
+      {state.status === 'none' && <Alert type="info">{isNativeApp() ? t('att.howtoApp') : t('att.howto')}</Alert>}
+      {isNativeApp() && state.status !== 'loading' && (
+        <button type="button" className="b b-primary" onClick={openScanner}>{t('nav.scan')}</button>
+      )}
       {state.status === 'error' && <Alert type="error">{state.text}</Alert>}
       {state.status === 'already' && <Alert type="success">{t('att.already')}</Alert>}
       {state.status === 'ok' && (

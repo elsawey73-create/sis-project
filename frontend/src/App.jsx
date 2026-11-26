@@ -2,6 +2,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { LanguageProvider } from './context/LanguageContext';
 import { ThemeProvider } from './context/ThemeContext';
 import { FeedbackProvider } from './context/FeedbackContext';
+import { isNativeApp } from './native/platform';
+import { NativeChrome } from './native/NativeShell';
 import { AuthProvider, useAuth, homeByRole } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
@@ -39,6 +41,7 @@ export default function App() {
     <LanguageProvider>
       <ThemeProvider>
         <FeedbackProvider>
+        {isNativeApp() && <NativeChrome />}
         <AuthProvider>
           <BrowserRouter>
             <Routes>

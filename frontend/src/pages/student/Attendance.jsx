@@ -1,12 +1,15 @@
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import { Alert, LoadError, Loading, Tag } from '../../components/ui';
+import { isNativeApp } from '../../native/platform';
+import { AttendanceNative } from '../../native/views';
 
 export default function Attendance() {
   const { t, pick } = useLanguage();
   const { data, error, loading, reload } = useFetch('/attendance/me');
   if (loading) return <Loading />;
   if (error || data == null) return <LoadError error={error} onRetry={reload} />;
+  if (isNativeApp()) return <AttendanceNative rows={data} />;
   return (
     <div className="card">
       <h2 className="m0">{t('nav.attendance')}</h2>

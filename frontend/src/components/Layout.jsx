@@ -4,6 +4,8 @@ import api from '../api/axios';
 import { useAuth } from '../context/AuthContext';
 import { useLanguage } from '../context/LanguageContext';
 import { motionMs } from '../utils/motion';
+import { isNativeApp } from '../native/platform';
+import NativeShell from '../native/NativeShell';
 import Brand from './Brand';
 import LanguageSwitcher from './LanguageSwitcher';
 import ThemeSwitcher from './ThemeSwitcher';
@@ -37,6 +39,11 @@ function NavItems({ items, onNavigate }) {
 }
 
 export default function Layout() {
+  if (isNativeApp()) return <NativeShell />;
+  return <WebLayout />;
+}
+
+function WebLayout() {
   const { user, logout } = useAuth();
   const { t, pick } = useLanguage();
   const location = useLocation();

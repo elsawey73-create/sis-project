@@ -9,39 +9,114 @@ const { occupying } = require('../domain/enrollment');
 const instructor = [authenticate, authorize('instructor')];
 const student = [authenticate, authorize('student')];
 
+// Displayed codes last 15 minutes. The older 30-second token route is unchanged.
+const QR_TTL_MINUTES = 15;
+const QR_TTL_SECONDS = QR_TTL_MINUTES * 60;
+
 async function ownOfferingId(offeringId, userId) {
   const [[o]] = await db.query('SELECT id FROM course_offerings WHERE id = ? AND instructor_id = ?', [offeringId, userId]);
   if (!o) throw new HttpError(404, 'NOT_FOUND');
 }
-async function ownSession(req) {
+async function ownSession(req, sessionId = req.params.id) {
   const [[s]] = await db.query(
     `SELECT s.*, c.code, c.name_ar, c.name_en
      FROM attendance_sessions s JOIN course_offerings o ON o.id = s.offering_id JOIN courses c ON c.id = o.course_id
      WHERE s.id = ? AND s.opened_by = ?`,
-    [req.params.id, req.user.id]
+    [sessionId, req.user.id]
   );
   if (!s) throw new HttpError(404, 'NOT_FOUND');
   return s;
 }
 const publicSession = ({ qr_secret, ...rest }) => rest;
 
+async function openOrCreateSession(offeringId, userId, meetingId) {
+  const [[open]] = await db.query(
+    "SELECT id FROM attendance_sessions WHERE offering_id = ? AND status = 'open'",
+    [offeringId]
+  );
+  if (open) return { id: open.id, created: false };
+  const [r] = await db.query(
+    `INSERT INTO attendance_sessions
+      (offering_id, meeting_id, session_date, opened_at, opened_by, qr_secret, status, token_ttl_seconds, late_after_minutes)
+     VALUES (?,?,CURDATE(),NOW(),?,?,'open',30,15)`,
+    [offeringId, meetingId || null, userId, crypto.randomBytes(24).toString('hex')]
+  );
+  return { id: r.insertId, created: true };
+}
+
+function requireOpen(session) {
+  if (session.status !== 'open') throw new HttpError(400, 'SESSION_CLOSED');
+  return session;
+}
+
+// JWT payload stays compatible with POST /attendance/scan: `sid` signed by qr_secret.
+// cid, ts, and rnd make each code specific to the class, the moment, and a random value.
+function buildQrToken(session, classId) {
+  const rnd = crypto.randomBytes(16).toString('hex');
+  const ts = Date.now();
+  return jwt.sign(
+    { sid: Number(session.id), cid: Number(classId), ts, rnd },
+    session.qr_secret,
+    { expiresIn: QR_TTL_SECONDS, jwtid: rnd }
+  );
+}
+
+function publicQr(row) {
+  const expiresIn = Math.max(0, Number(row.expires_in) || 0);
+  const expired = expiresIn <= 0;
+  return {
+    session_id: row.session_id,
+    class_id: row.class_id,
+    doctor_id: row.doctor_id,
+    qr_token: expired ? null : row.qr_token,
+    expires_at: row.expires_at,
+    created_at: row.created_at,
+    expires_in: expiresIn,
+    expired,
+  };
+}
+
+async function selectQr(whereSql, params) {
+  const [[row]] = await db.query(
+    `SELECT session_id, class_id, doctor_id, qr_token, expires_at, created_at,
+            TIMESTAMPDIFF(SECOND, NOW(), expires_at) AS expires_in
+     FROM qr_attendance_sessions
+     WHERE ${whereSql}
+     ORDER BY id DESC LIMIT 1`,
+    params
+  );
+  return row || null;
+}
+
+async function insertQr(session, doctorId) {
+  const classId = session.offering_id;
+  const qrToken = buildQrToken(session, classId);
+  await db.query(
+    `INSERT INTO qr_attendance_sessions (session_id, class_id, doctor_id, qr_token, expires_at)
+     VALUES (?,?,?,?, DATE_ADD(NOW(), INTERVAL ? MINUTE))`,
+    [session.id, classId, doctorId, qrToken, QR_TTL_MINUTES]
+  );
+  return selectQr('session_id = ? AND qr_token = ?', [session.id, qrToken]);
+}
+
+async function expireActive(sessionId) {
+  await db.query(
+    'UPDATE qr_attendance_sessions SET expires_at = NOW() WHERE session_id = ? AND expires_at > NOW()',
+    [sessionId]
+  );
+}
+
 // Instructor: open a session. If one is already open for this offering, return it.
 router.post('/sessions', instructor, async (req, res) => {
   const { offering_id, meeting_id } = req.body;
   if (!offering_id) throw new HttpError(400, 'MISSING_FIELDS');
   await ownOfferingId(offering_id, req.user.id);
-  const [[open]] = await db.query("SELECT id FROM attendance_sessions WHERE offering_id = ? AND status = 'open'", [offering_id]);
-  if (open) return res.json({ id: open.id });
-  const [r] = await db.query(
-    `INSERT INTO attendance_sessions
-      (offering_id, meeting_id, session_date, opened_at, opened_by, qr_secret, status, token_ttl_seconds, late_after_minutes)
-     VALUES (?,?,CURDATE(),NOW(),?,?,'open',30,15)`,
-    [offering_id, meeting_id || null, req.user.id, crypto.randomBytes(24).toString('hex')]
-  );
-  res.status(201).json({ id: r.insertId });
+  const opened = await openOrCreateSession(offering_id, req.user.id, meeting_id);
+  if (!opened.created) return res.json({ id: opened.id });
+  res.status(201).json({ id: opened.id });
 });
 
-// New QR token. The screen requests another one every 20 seconds.
+// New short-lived QR token. Kept for clients that rotate every few seconds.
 router.get('/sessions/:id/token', instructor, async (req, res) => {
   const s = await ownSession(req);
   if (s.status !== 'open') throw new HttpError(400, 'SESSION_CLOSED');
@@ -49,6 +124,44 @@ router.get('/sessions/:id/token', instructor, async (req, res) => {
   const expiresIn = Number.isFinite(ttl) && ttl > 0 ? Math.floor(ttl) : 30;
   const token = jwt.sign({ sid: Number(s.id) }, s.qr_secret, { expiresIn });
   res.json({ session_id: s.id, token, expires_in: expiresIn });
+});
+
+// Active stored QR for this session, including a code that has already expired.
+router.get('/sessions/:id/qr', instructor, async (req, res) => {
+  const s = requireOpen(await ownSession(req));
+  const row = await selectQr('session_id = ?', [s.id]);
+  if (!row) throw new HttpError(404, 'NOT_FOUND');
+  res.json(publicQr(row));
+});
+
+// Issue a 15-minute code, or return the one that is still valid.
+router.post('/sessions/:id/qr', instructor, async (req, res) => {
+  const s = requireOpen(await ownSession(req));
+  const active = await selectQr('session_id = ? AND expires_at > NOW()', [s.id]);
+  if (active) return res.json(publicQr(active));
+  const row = await insertQr(s, req.user.id);
+  res.status(201).json(publicQr(row));
+});
+
+// Replace the current code. The previous token stops scanning immediately.
+router.post('/sessions/:id/qr/refresh', instructor, async (req, res) => {
+  const s = requireOpen(await ownSession(req));
+  await expireActive(s.id);
+  const row = await insertQr(s, req.user.id);
+  res.status(201).json(publicQr(row));
+});
+
+// Open the class session if needed, then issue or reuse its QR code.
+router.post('/qr', instructor, async (req, res) => {
+  const classId = req.body.class_id ?? req.body.offering_id;
+  if (classId === undefined || classId === null || classId === '') throw new HttpError(400, 'MISSING_FIELDS');
+  await ownOfferingId(classId, req.user.id);
+  const opened = await openOrCreateSession(classId, req.user.id, req.body.meeting_id);
+  const s = requireOpen(await ownSession(req, opened.id));
+  const active = await selectQr('session_id = ? AND expires_at > NOW()', [s.id]);
+  if (active) return res.status(opened.created ? 201 : 200).json(publicQr(active));
+  const row = await insertQr(s, req.user.id);
+  res.status(201).json(publicQr(row));
 });
 
 // Session detail and each student's mark.
@@ -127,6 +240,20 @@ router.post('/scan', student, async (req, res) => {
     if (Number(p.sid) !== Number(s.id)) throw new Error('mismatch');
   } catch {
     throw new HttpError(400, 'QR_EXPIRED');
+  }
+
+  // Stored codes are single-use until they expire or the doctor refreshes them.
+  // Short tokens from GET /sessions/:id/token are not stored and keep the old check.
+  const [[stored]] = await db.query(
+    'SELECT id FROM qr_attendance_sessions WHERE session_id = ? AND qr_token = ?',
+    [s.id, token]
+  );
+  if (stored) {
+    const [[active]] = await db.query(
+      'SELECT id FROM qr_attendance_sessions WHERE session_id = ? AND qr_token = ? AND expires_at > NOW()',
+      [s.id, token]
+    );
+    if (!active) throw new HttpError(400, 'QR_EXPIRED');
   }
 
   const [[enr]] = await db.query(

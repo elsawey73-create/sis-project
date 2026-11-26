@@ -4,6 +4,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import { LoadError, Loading } from '../../components/ui';
+import { isNativeApp } from '../../native/platform';
 
 export default function Notifications() {
   const { user } = useAuth();
@@ -18,15 +19,16 @@ export default function Notifications() {
     return n.type;
   };
 
+  const native = isNativeApp();
   return (
-    <div className="card">
+    <div className={native ? 'native-stack' : 'card'}>
       <div className="row between">
         <h2 className="m0">{t('nav.notifications')}</h2>
         <button className="b b-ghost" onClick={async () => { await api.post('/notifications/read-all'); reload(); }}>{t('notif.readAll')}</button>
       </div>
       {data.length === 0 && <p className="muted">{t('notif.none')}</p>}
       {data.map((n) => (
-        <div key={n.id} className={`notif ${n.is_read ? '' : 'unread'}`}>
+        <div key={n.id} className={`notif ${native ? 'native-card' : ''} ${n.is_read ? '' : 'unread'}`}>
           <div>
             {n.type === 'message' && user.role !== 'admin'
               ? <Link to={`/messages/${n.data.thread_id}`}>{text(n)}</Link>

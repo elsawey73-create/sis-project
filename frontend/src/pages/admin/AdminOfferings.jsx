@@ -4,6 +4,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import { Alert, FetchBody, Field, LoadError, Loading, Tag } from '../../components/ui';
 import { useFeedback } from '../../context/FeedbackContext';
+import { isNativeApp } from '../../native/platform';
 import { DAYS, errorText, hhmm } from '../../utils/format';
 
 const emptySem = { name_ar: '', name_en: '', start_date: '', end_date: '', registration_start: '', registration_end: '', is_current: false };
@@ -86,6 +87,24 @@ export default function AdminOfferings() {
             </div>
           </form>
         )}
+        {isNativeApp() ? (
+          <div className="native-stack">
+            {sems.data.length === 0 && <p className="native-empty muted">{t('reg.none')}</p>}
+            {sems.data.map((s) => (
+              <article key={s.id} className="native-card">
+                <div className="native-card-top">
+                  <strong>{pick(s.name_ar, s.name_en)}</strong>
+                  {s.is_current ? <Tag kind="ok">{t('sem.current')}</Tag> : null}
+                </div>
+                <p className="small">{s.registration_start} → {s.registration_end}</p>
+                <div className="native-card-top">
+                  <Tag kind={s.registration_open ? 'ok' : 'muted'}>{s.registration_open ? t('reg.open') : t('reg.closed')}</Tag>
+                  <button type="button" className="b b-ghost" onClick={() => { setSemEdit(s.id); setSem({ ...s, is_current: !!s.is_current }); }}>{t('common.edit')}</button>
+                </div>
+              </article>
+            ))}
+          </div>
+        ) : (
         <div className="table-wrap">
         <table className="table">
           <thead><tr><th>{t('col.semester')}</th><th>{t('sem.regWindow')}</th><th /></tr></thead>
@@ -101,6 +120,7 @@ export default function AdminOfferings() {
           </tbody>
         </table>
         </div>
+        )}
       </div>
 
       <div className="card gap-top">
@@ -155,7 +175,28 @@ export default function AdminOfferings() {
           <LoadError error={courses.error || instructors.error} onRetry={() => { courses.reload(); instructors.reload(); }} />
         )}
         <FetchBody loading={offers.loading} error={offers.error} data={offers.data} onRetry={offers.reload}>
-          {(list) => (
+          {(list) => isNativeApp() ? (
+            <div className="native-stack">
+              {list.length === 0 && <p className="native-empty muted">{t('reg.none')}</p>}
+              {list.map((o) => (
+                <article key={o.id} className="native-card">
+                  <div className="native-card-top">
+                    <div>
+                      <span className="native-code">{o.code}</span>
+                      <strong>{pick(o.name_ar, o.name_en)}</strong>
+                    </div>
+                    <span className="tag tag-muted">{t('off.section')} {o.section}</span>
+                  </div>
+                  <p className="muted small">{pick(o.instructor_ar, o.instructor_en)} · {o.enrolled_count}/{o.capacity}</p>
+                  <p className="small">{o.meetings.map((m) => `${t('day.' + m.day_of_week)} ${hhmm(m.start_time)}–${hhmm(m.end_time)} (${m.room})`).join(' · ')}</p>
+                  <div className="native-actions">
+                    <button type="button" className="b b-ghost" onClick={() => editOff(o)}>{t('common.edit')}</button>
+                    <button type="button" className="btn-small" onClick={() => confirm(t('common.confirm')) && run(() => api.delete(`/offerings/${o.id}`))}>{t('common.delete')}</button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
           <div className="table-wrap">
             <table className="table">
               <thead><tr><th>{t('col.code')}</th><th>{t('col.course')}</th><th>{t('off.section')}</th><th>{t('col.instructor')}</th><th>{t('col.schedule')}</th><th>{t('col.seats')}</th><th /></tr></thead>

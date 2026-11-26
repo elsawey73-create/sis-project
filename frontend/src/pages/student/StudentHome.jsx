@@ -4,6 +4,8 @@ import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import WeeklySchedule from '../../components/WeeklySchedule';
 import { Alert, LoadError, Loading, Stat, Tag } from '../../components/ui';
+import { isNativeApp } from '../../native/platform';
+import { StudentHomeNative } from '../../native/views';
 import { hhmm } from '../../utils/format';
 
 const WEEK = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu'];
@@ -62,6 +64,22 @@ export default function StudentHome() {
   const meetings = courses.flatMap((c) => (c.meetings || []).map((m) => ({ ...m, code: c.code, name_ar: c.name_ar, name_en: c.name_en })));
   const upcoming = nextMeetings(courses);
   const recent = (grades.data || []).slice(0, 5);
+
+  if (isNativeApp()) {
+    return (
+      <StudentHomeNative
+        user={user}
+        summary={summary}
+        schedule={schedule}
+        att={att}
+        grades={grades}
+        courses={courses}
+        meetings={meetings}
+        upcoming={upcoming}
+        recent={recent}
+      />
+    );
+  }
 
   return (
     <>

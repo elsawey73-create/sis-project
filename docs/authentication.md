@@ -2,12 +2,12 @@
 
 ## Overview
 
-Users sign in with `login_id` and a password. The API returns a JWT. Later requests send `Authorization: Bearer <token>`. The token carries `id`, `role`, and `tv`. Each request re-reads `users.role`; the claim is not what `authorize` checks. A second, unrelated JWT is used for QR attendance and is documented in [Attendance](attendance.md).
+Users sign in with `login_id` and a password. The API returns an access JWT and a refresh JWT. Later requests send `Authorization: Bearer <access token>`. The access token carries `id`, `role`, `tv`, and `typ: 'access'`. Tokens issued before `typ` existed have no `typ` claim and are still accepted until they expire. Each request re-reads `users.role`; the claim is not what `authorize` checks. A refresh token (`typ: 'refresh'`) cannot be used as a bearer token. A second, unrelated JWT is used for QR attendance and is documented in [Attendance](attendance.md).
 
 ## Purpose and responsibilities
 
 - Check passwords without revealing whether the login ID exists. Accounts are created by an admin or by seed, not by a public signup route.
-- Issue a 7-day token and a public user object.
+- Issue a 2-hour access token, a 7-day refresh token, and a public user object.
 - Load role-specific profile fields on `GET /api/auth/me`.
 - Store `preferred_lang` on the user.
 - Reject missing tokens, bad tokens, and wrong roles.
@@ -16,11 +16,12 @@ Users sign in with `login_id` and a password. The API returns a JWT. Later reque
 
 | Path | Responsibility |
 |---|---|
-| `backend/src/controllers/authController.js` | login, forgot-password, reset-password, me, logout, setLanguage |
+| `backend/src/controllers/authController.js` | login, refresh, forgot-password, reset-password, me, logout, setLanguage |
+| `backend/src/utils/tokens.js` | Access and refresh token signing, TTLs, optional refresh secret |
 | `backend/src/routes/auth.js` | Paths and which ones require `authenticate` |
 | `backend/src/middleware/auth.js` | `authenticate`, `authorize(...roles)` |
 | `frontend/src/context/AuthContext.jsx` | Token storage, login, logout, `/auth/me` on load |
-| `frontend/src/api/axios.js` | Attaches the bearer token |
+| `frontend/src/api/axios.js` | Attaches the bearer token and refreshes it after a 401 |
 | `frontend/src/components/ProtectedRoute.jsx` | Client-side role gate |
 | `frontend/src/pages/Login.jsx` | Sign-in form, link to forgot password |
 | `frontend/src/pages/ForgotPassword.jsx` | Asks for an ID or email and tells the person to check their email |
@@ -34,19 +35,27 @@ Users sign in with `login_id` and a password. The API returns a JWT. Later reque
 1. `POST /api/auth/login` with `{ login_id, password }`. Blank values → `400 MISSING_FIELDS`.
 2. `SELECT * FROM users WHERE login_id = ?` after trim.
 3. `bcrypt.compare`. Unknown user and wrong password both return `401 INVALID_CREDENTIALS`.
-4. Response: `{ token, user }`. `user` is `id`, `login_id`, `full_name_ar`, `full_name_en`, `role`, `preferred_lang`. Password hash and email are not included.
-5. The client stores the token under `localStorage` key `token`, then calls `GET /api/auth/me` and stores that fuller profile (including `student` or `instructor`). If `/me` fails, the token is removed.
+4. Response: `{ token, refresh_token, user }`. `token` is the access token (7200 seconds). `refresh_token` lasts 7 days. `user` is `id`, `login_id`, `full_name_ar`, `full_name_en`, `role`, `preferred_lang`. Password hash and email are not included. Older clients that only read `token` and `user` still work.
+5. The client stores `token` and, when the server sends one, `refresh_token` in `localStorage`, then calls `GET /api/auth/me` and stores that fuller profile (including `student` or `instructor`). If `/me` fails, both keys are removed.
 6. If `localStorage.lang` is `ar` or `en`, the client `PATCH /api/auth/language` so the account matches this browser. Otherwise, if the account has `preferred_lang`, the client switches to it.
 
 ### Session restore
 
-On load, if a token exists, `GET /api/auth/me` runs. Success replaces `user` with the fuller profile. Failure removes the token.
+On load, if an access token exists, `GET /api/auth/me` runs. A 401 with a stored refresh token calls `POST /api/auth/refresh` and retries that request once. Success replaces `user` with the fuller profile. Failure removes `token` and `refresh_token`. A session that has only `token` (no `refresh_token`) does not call the refresh endpoint. A valid legacy token still loads the profile. A 401 with no refresh token removes `token`, which is the same logged-out result as before.
 
 `/me` adds:
 
 - Students: `student` = `{ student_code, level, admission_year, department_ar, department_en }`.
 - Instructors: `instructor` = `{ department_ar, department_en }`.
 - Admins: no extra object.
+
+### Refresh
+
+`POST /api/auth/refresh` takes `{ refresh_token }` in the JSON body. It does not read a cookie or the `Authorization` header. That is what the Capacitor WebView needs: its origin is `https://localhost` (Android) or `capacitor://localhost` (iOS), and the API is on another host.
+
+A missing or blank `refresh_token` is `401 UNAUTHENTICATED`. A token that is not `typ: 'refresh'`, is expired, has a bad signature, or whose `tv` does not match `users.token_version` is `401 SESSION_EXPIRED`. An access token, including a legacy token with no `typ`, cannot mint a new token. Success returns `{ token }`, a new 2-hour access token signed from the current `users.role`. The same refresh token stays valid until it expires or `token_version` changes. Logout, an admin password change, and `POST /api/auth/reset-password` increment `token_version`, so both tokens fail on the next use.
+
+`npm run test:tokens` (`backend/scripts/test-auth-tokens.js`) stubs the database and checks expiry, legacy tokens, refresh, and rejection. It does not need MySQL. `npm run test:refresh` in `frontend` checks that concurrent 401s share one refresh call, that login and refresh are not retried, and that a failed refresh does not clear a newer login.
 
 ### Password reset
 
@@ -78,7 +87,7 @@ There is no `POST /api/auth/register`. A student, instructor, or admin account i
 
 ### Guards
 
-`authenticate` reads the `Bearer` header. No token → `401 UNAUTHENTICATED`. `jwt.verify` failure (bad signature, expiry, malformed) → `401 SESSION_EXPIRED`. A missing user, or a `tv` that does not match `users.token_version`, is the same `401`. Success sets `req.user = { id, role }` from the user row, so a role change in the database applies on the next request.
+`authenticate` reads the `Bearer` header. No token → `401 UNAUTHENTICATED`. `jwt.verify` failure (bad signature, expiry, malformed) → `401 SESSION_EXPIRED`. A payload whose `typ` is present and is not `'access'` (including `'refresh'`) is the same `401`, before the database lookup. A missing `typ` is treated as an access token. A missing user, or a `tv` that does not match `users.token_version`, is the same `401`. Success sets `req.user = { id, role }` from the user row, so a role change in the database applies on the next request.
 
 `authorize(...roles)` returns `403 FORBIDDEN` when `req.user.role` is not in the list. It assumes `authenticate` already ran.
 
@@ -92,8 +101,9 @@ The server still enforces roles. The client redirect is only navigation.
 
 ## Dependencies and interactions
 
-- JWT secret is `process.env.JWT_SECRET`. Sign and verify both use it. Expiry is the string `'7d'`. The payload is `{ id, role, tv }`. `tv` is `users.token_version`.
-- `POST /api/auth/logout` requires the bearer token and increments `token_version`. The client calls it before deleting `localStorage.token`. Every device for that user must sign in again. Admin password reset and `POST /api/auth/reset-password` do the same increment. A missing user id on the admin password route returns `404 USER_NOT_FOUND`.
+- Access tokens are signed with `process.env.JWT_SECRET` and expire in 7200 seconds. Refresh tokens expire in 7 days. They are signed with `JWT_REFRESH_SECRET` when that variable is a non-empty string, and with `JWT_SECRET` otherwise, so a deployment that does not set the new variable keeps working. The payload is `{ id, role, tv, typ }`. `typ` is `'access'` or `'refresh'`. `tv` is `users.token_version`.
+- The client stores `refresh_token` beside `token`. On a 401 from any request except `/auth/login` and `/auth/refresh`, and only when `refresh_token` is present, it posts that token as JSON, stores the new access token, and retries the original request once. Concurrent 401s share one refresh call. A 401 from the refresh call clears both keys. A network failure does not. A 401 with no refresh token is unchanged: the caller sees the error, and the initial `/auth/me` failure deletes the stored keys.
+- `POST /api/auth/logout` requires the access token and increments `token_version`. The client calls it before deleting `localStorage.token` and `localStorage.refresh_token`. If the access token is already expired, the 401 interceptor refreshes once and then retries logout. Every device for that user must sign in again. Admin password reset and `POST /api/auth/reset-password` do the same increment. A missing user id on the admin password route returns `404 USER_NOT_FOUND`.
 - bcrypt cost is 10 on admin create, admin password reset, public password reset, and seed.
 - `LanguageSwitcher` patches `/auth/language` only when `useAuth().user` is set. On the login page the user is null, so the toggle only updates `localStorage` and the document direction. Login then uploads that choice.
 - After login the client replaces the login payload with `GET /api/auth/me`, so `StudentHome` has `user.student` on the first paint. `DoctorHome` does not read `user.instructor`.
@@ -102,7 +112,7 @@ The server still enforces roles. The client redirect is only navigation.
 
 **Complete** for login, session restore, role gates, and language persistence.
 
-**Partial** for account lifecycle: a public reset emails a one-hour link and does not return that link unless `PASSWORD_RESET_RETURN_LINK=true` on a non-production process. There is still no password change for the signed-in user and no public signup. Logout and a completed reset revoke by bumping `token_version` for the whole account, not per device. The token remains in `localStorage` until logout, expiry, or revocation. The nav keeps the role from the last `/auth/me` until the next load, even if `users.role` changed underneath.
+**Partial** for account lifecycle: a public reset emails a one-hour link and does not return that link unless `PASSWORD_RESET_RETURN_LINK=true` on a non-production process. There is still no password change for the signed-in user and no public signup. Logout and a completed reset revoke by bumping `token_version` for the whole account, not per device. The access token and the refresh token remain in `localStorage` until logout, expiry, or revocation. The nav keeps the role from the last `/auth/me` until the next load, even if `users.role` changed underneath.
 
 ## Implementation details and gotchas
 

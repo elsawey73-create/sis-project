@@ -7,6 +7,8 @@ import useFetch from '../../hooks/useFetch';
 import WeeklySchedule from '../../components/WeeklySchedule';
 import { Alert, LoadError, Loading, Stat, Tag } from '../../components/ui';
 import { useFeedback } from '../../context/FeedbackContext';
+import { isNativeApp } from '../../native/platform';
+import { DoctorHomeNative } from '../../native/views';
 import { errorText, hhmm } from '../../utils/format';
 
 export default function DoctorHome() {
@@ -19,8 +21,8 @@ export default function DoctorHome() {
 
   async function startAttendance(o) {
     try {
-      const r = await api.post('/attendance/sessions', { offering_id: o.id });
-      navigate(`/doctor/attendance/${r.data.id}`);
+      const r = await api.post('/attendance/qr', { class_id: o.id });
+      navigate(`/doctor/attendance/${r.data.session_id}`);
     } catch (e) {
       const text = errorText(e, t);
       setActionError(text);
@@ -34,6 +36,21 @@ export default function DoctorHome() {
   const open = data.filter((o) => o.open_session_id);
   const pending = data.filter((o) => Number(o.pending_grades) > 0);
   const pendingTotal = data.reduce((n, o) => n + Number(o.pending_grades || 0), 0);
+
+  if (isNativeApp()) {
+    return (
+      <DoctorHomeNative
+        user={user}
+        data={data}
+        items={items}
+        open={open}
+        pending={pending}
+        pendingTotal={pendingTotal}
+        actionError={actionError}
+        onStart={startAttendance}
+      />
+    );
+  }
 
   return (
     <>
@@ -109,7 +126,7 @@ export default function DoctorHome() {
                   <td className="actions">
                     <Link className="b b-ghost" to={`/doctor/offerings/${o.id}`}>{t('doc.gradesStudents')}</Link>
                     <button className="b b-primary" onClick={() => startAttendance(o)}>
-                      {o.open_session_id ? t('doc.continueAtt') : t('doc.startAtt')}
+                      {o.open_session_id ? t('doc.continueAtt') : t('doc.generateQr')}
                     </button>
                     {o.open_session_id && <Tag kind="ok">{t('att.live')}</Tag>}
                   </td>
