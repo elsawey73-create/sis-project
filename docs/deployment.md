@@ -34,7 +34,8 @@ Copy `backend/.env.example` to `backend/.env` for a local file, or set the same 
 | `DB_USER` | Required, non-empty. Development default `root` |
 | `DB_PASSWORD` | Required to be present. An empty value is kept. Development uses an empty password only when the variable is unset |
 | `DB_NAME` | Required, non-empty. Letters, numbers, and underscores only. Development default `unidex_db` |
-| `JWT_SECRET` | Required in every mode. Production also requires at least 32 characters. The example placeholder meets that length; replace it and do not commit the real value |
+| `JWT_SECRET` | Required in every mode. Production also requires at least 32 characters. The example placeholder meets that length; replace it and do not commit the real value. Access tokens are signed with this secret. Refresh tokens use it too when `JWT_REFRESH_SECRET` is unset |
+| `JWT_REFRESH_SECRET` | Optional. When unset or empty, refresh tokens are signed with `JWT_SECRET`. Set it only to use a different secret. A deployment that does not have this variable keeps working |
 | `CORS_ORIGINS` | Required, comma-separated browser origins such as `https://unidex.example.com`. This is the site the browser loads, not the API URL. Spaces around commas are trimmed. An empty value in development allows every origin and prints a warning. Production exits when the list is empty. When the list is non-empty the API also allows the Capacitor origins `https://localhost` and `capacitor://localhost` |
 | `PORT` | Listen port. `5000` when unset, including in production. Many hosts set this themselves |
 | `NODE_ENV` | Set `production` on the public API process |

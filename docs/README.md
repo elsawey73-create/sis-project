@@ -6,7 +6,7 @@ This folder describes the code that is in the repository today. It does not desc
 
 ## What the system does
 
-- Sign-in by login ID and password. JSON Web Tokens last 7 days.
+- Sign-in by login ID and password. Access tokens last 2 hours. A refresh token lasts 7 days.
 - Course catalog with departments, bilingual names, credit hours, a practical flag, and prerequisites.
 - Semesters, including one current semester and a registration window.
 - Course offerings (sections) with an instructor, a capacity, and weekly meetings.

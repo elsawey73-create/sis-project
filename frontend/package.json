@@ -8,6 +8,7 @@
     "build": "vite build",
     "build:android": "vite build && npx cap sync android",
     "lint": "oxlint",
+    "test:refresh": "node --test scripts/test-refresh.mjs",
     "preview": "vite preview"
   },
   "dependencies": {

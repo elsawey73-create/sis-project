@@ -28,9 +28,9 @@ The architecture keeps three jobs apart:
 ## Data flow
 
 1. `index.html` sets `lang="ar"` and `dir="rtl"`. After load, `LanguageContext` sets `lang` and `dir` from `localStorage` (`ar` or `en`). Default is Arabic.
-2. `AuthProvider` reads `localStorage.token`. If a token exists it calls `GET /api/auth/me`. A failed call deletes the token.
+2. `AuthProvider` reads `localStorage.token`. If a token exists it calls `GET /api/auth/me`. A 401 can refresh once when `localStorage.refresh_token` is set. A failed call deletes both keys.
 3. `BrowserRouter` sends `/` to `/login`, `/student`, `/doctor`, or `/admin` based on `user.role`.
-4. Page components call the API through Axios. The request interceptor attaches `Bearer <token>`.
+4. Page components call the API through Axios. The request interceptor attaches `Bearer <token>`. A 401 with a stored refresh token refreshes once and retries.
 5. Express matches a router. Most routers call `authenticate` and `authorize`.
 6. Handlers use the pool directly or `withTx` when several statements must commit together.
 7. Errors thrown as `HttpError` become `{ error, details }` with an HTTP status. The client maps `error` through `translations.js`.
@@ -49,7 +49,7 @@ The database role string is `instructor`. The URL and navigation label use "doct
 
 The browser and the API both enforce these roles. `ProtectedRoute` sends a signed-in user who opens another role's path back to their own home. `authorize` returns `403 FORBIDDEN`. An ownership check that fails returns `404 NOT_FOUND`.
 
-`authenticate` loads `users.role` on every request and does not use the role claim inside the JWT. `tv` must still match `users.token_version`.
+`authenticate` loads `users.role` on every request and does not use the role claim inside the JWT. `tv` must still match `users.token_version`. A refresh token is rejected. A token with no `typ` claim is still accepted.
 
 ### Pages
 
@@ -68,7 +68,7 @@ The nav shows only that role's links. Admins have no messages link. A message no
 
 | Area | Who |
 |---|---|
-| `POST /api/auth/login`, `GET /api/health` | Public. |
+| `POST /api/auth/login`, `POST /api/auth/refresh`, `GET /api/health` | Public. |
 | `GET /api/auth/me`, `POST /api/auth/logout`, `PATCH /api/auth/language` | Any signed-in role. |
 | `GET /api/departments`, `GET /api/courses`, `GET /api/courses/:id`, `GET /api/semesters`, `GET /api/offerings` | Any signed-in role. Offering rows include seats and the instructor's name. A student also receives their own enrollment status, passed courses, and missing prerequisites. The list does not include rosters or grades. |
 | Catalog writes, `GET /api/instructors`, offering writes, `/api/admin/*`, `GET /api/admin/ping` | Admin. |
@@ -96,7 +96,7 @@ The full route list is [API reference](api-reference.md).
 
 **Complete** as a single-campus monolith for the features listed in [the index](README.md). A new database comes from `backend/sql/001_init.sql` via `npm run db:init`. See [Data model](data-model.md) and [Setup](setup-and-configuration.md).
 
-User JWTs include `tv` (`users.token_version`). `authenticate` rejects a token whose `tv` does not match the row. Logout and an admin password reset increment the version, which ends every session for that account. The token is still stored in `localStorage`, so a script that runs on the page origin can read it until that happens.
+Access JWTs include `tv` (`users.token_version`) and expire in 2 hours. Refresh JWTs carry the same `tv` and expire in 7 days. `authenticate` rejects a token whose `tv` does not match the row, and rejects `typ: 'refresh'`. Logout and an admin password reset increment the version, which ends every session for that account. Both tokens are still stored in `localStorage`, so a script that runs on the page origin can read them until that happens.
 
 ## Implementation details and gotchas
 
@@ -104,5 +104,5 @@ User JWTs include `tv` (`users.token_version`). `authenticate` rejects a token w
 - `dateStrings: true` on the pool makes MySQL date values come back as strings such as `2026-09-01`. `decimalNumbers: true` makes decimal columns come back as numbers. GPA math uses those numbers directly.
 - There is one pool (`connectionLimit: 10`) shared by HTTP handlers, `seed.js`, and transactions. Seed is a separate process (`npm run seed`), not an HTTP route.
 - The QR payload is `${window.location.origin}/attend?s=...&t=...`. Opening the site as `localhost` puts `localhost` in the QR, which another device cannot open. In development the API base URL uses that same page hostname and port 5000 unless `VITE_API_URL` is set. A production build uses only `VITE_API_URL`, so the phone must be able to open that API origin too.
-- Passwords are bcrypt hashes (cost 10). The JWT payload is `{ id, role, tv }`. Authorization uses `users.role` from the database, not the role claim. `tv` must match `users.token_version`. The menus still show the role returned by the last `GET /api/auth/me` until the next load.
+- Passwords are bcrypt hashes (cost 10). New session JWTs use `{ id, role, tv, typ }`. Authorization uses `users.role` from the database, not the role claim. `tv` must match `users.token_version`. Tokens that have no `typ` still pass `authenticate`. The menus still show the role returned by the last `GET /api/auth/me` until the next load.
 - A student token cannot call admin or instructor routes (`403 FORBIDDEN`). An instructor token cannot open another instructor's offering, or a session that instructor did not open (`404 NOT_FOUND`).

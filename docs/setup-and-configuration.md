@@ -36,6 +36,7 @@ Backend (`backend/package.json`):
 | `npm run seed` | `node src/seed.js` |
 | `npm run test:api` | `node scripts/smoke.js` |
 | `npm run test:reset` | `node scripts/test-password-reset.js` |
+| `npm run test:tokens` | `node scripts/test-auth-tokens.js` |
 
 `npm run test:api` runs `scripts/smoke.js`. The API process must already be listening, and the database should be a fresh seed. The script changes data. See [API smoke test](api-smoke-test.md).
 
@@ -46,9 +47,10 @@ Frontend (`frontend/package.json`):
 | `npm run dev` | `vite` |
 | `npm run build` | `vite build` |
 | `npm run lint` | `oxlint` |
+| `npm run test:refresh` | `node --test scripts/test-refresh.mjs` |
 | `npm run preview` | `vite preview` |
 
-No test script exists on the frontend. No `engines` field pins a Node version in either package.
+`npm run test:refresh` checks the client refresh gate without a browser. No `engines` field pins a Node version in either package.
 
 ## Environment variables the code reads
 
@@ -58,7 +60,8 @@ No test script exists on the frontend. No `engines` field pins a Node version in
 | `DB_USER` | same | Development default `root`. Production exits if this is missing or blank |
 | `DB_PASSWORD` | same | An explicit empty value is kept. Development uses an empty password only when the variable is unset. Production exits when the variable is unset |
 | `DB_NAME` | same | Development default `unidex_db`. Production exits if this is missing or blank. `migrate.js` allows only letters, numbers, and underscores |
-| `JWT_SECRET` | `authController.js`, `middleware/auth.js`, `server.js` | HMAC secret for user tokens. The process exits on startup if it is missing. In `NODE_ENV=production` it must be at least 32 characters |
+| `JWT_SECRET` | `utils/tokens.js`, `middleware/auth.js`, `server.js` | HMAC secret for access tokens, and for refresh tokens when `JWT_REFRESH_SECRET` is unset. The process exits on startup if it is missing. In `NODE_ENV=production` it must be at least 32 characters |
+| `JWT_REFRESH_SECRET` | `utils/tokens.js` | Optional HMAC secret for refresh tokens. Empty or unset uses `JWT_SECRET`. Existing deployments do not need to set it |
 | `CORS_ORIGINS` | `server.js` | Comma-separated browser origins. Empty means every origin, with a startup warning. `NODE_ENV=production` refuses to start when this is empty. A non-empty list also allows `https://localhost` and `capacitor://localhost` |
 | `NODE_ENV` | `server.js`, `config/env.js`, `seed.js` | `production` turns on the checks above and makes `npm run seed` exit 1 |
 | `PORT` | `server.js` | Listen port. Default `5000` when unset, including in production |

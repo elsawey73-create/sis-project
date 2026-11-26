@@ -36,8 +36,8 @@ Keep client copy and server codes aligned. `translations.js` has an `error.*` en
 | `INVALID_REFERENCE` | 400 | MySQL `ER_NO_REFERENCED_ROW_2` on routes that use the global handler | |
 | `DEPT_NOT_FOUND` | | Not returned. The translation key remains. | |
 | `INVALID_CREDENTIALS` | 401 | Unknown login id or wrong password | |
-| `UNAUTHENTICATED` | 401 | No bearer token | |
-| `SESSION_EXPIRED` | 401 | Token failed `jwt.verify`, or `tv` does not match `users.token_version` | |
+| `UNAUTHENTICATED` | 401 | No bearer token, or `POST /api/auth/refresh` without `refresh_token` | |
+| `SESSION_EXPIRED` | 401 | Token failed `jwt.verify`, `tv` does not match `users.token_version`, `typ` is not an access token, or the refresh token was rejected | |
 | `FORBIDDEN` | 403 | Role not allowed, or message receiver is not a contact | |
 | `REGISTRATION_CLOSED` | 403 | Enroll or drop outside the window | |
 | `NOT_ENROLLED` | 403 or 409 | Scan or manual mark: 403. Drop of a non-enrolled row: 409 | |
