@@ -98,8 +98,13 @@ Role: instructor. Offering routes that take `:id` require `instructor_id = req.u
 | `POST /api/attendance/sessions/:id/close` | instructor, owner | | `{ ok: true }` |
 | `PUT /api/attendance/sessions/:id/students/:studentId` | instructor, owner | `{ status }` | `{ ok: true }` |
 | `GET /api/attendance/offering/:id/sessions` | instructor, owner | | session list |
-| `POST /api/attendance/scan` | student | `{ session_id, token }` | `{ status, course }` |
-| `GET /api/attendance/me` | student | | per-offering totals and `warning` |
+| `POST /api/attendance/scan` | student | `{ session_id, token, photo, device_id, latitude?, longitude?, accuracy? }` | `{ status, course, distance_m }` |
+| `GET /api/attendance/me` | student | | per-offering totals, `warning`, `approaching`. Optional `semester_id` |
+| `GET /api/attendance/me/history` | student | | one row per session. Optional `semester_id` |
+| `GET /api/attendance/sessions/:id/report` | instructor, owner | `?format=xlsx` or `pdf` | file |
+| `GET /api/attendance/offerings/:id/report` | instructor, owner | `?format=xlsx` or `pdf` | file |
+| `GET /api/attendance/sessions/:id/students/:studentId/photo` | instructor, owner | | JPEG |
+| `PUT /api/attendance/offerings/:id/absence-limit` | instructor, owner | `{ absence_limit_pct }` or null | `{ absence_limit_pct }` |
 
 ## Messages
 
@@ -108,7 +113,7 @@ Role: student or instructor.
 | Method and path | Body | Success |
 |---|---|---|
 | `GET /api/messages/contacts` | | contact rows |
-| `GET /api/messages/threads` | | thread summaries |
+| `GET /api/messages/threads` | optional `?q=` | thread summaries |
 | `GET /api/messages/threads/:id` | | `{ thread, messages }` and marks received rows read |
 | `POST /api/messages/threads` | `receiver_id`, `subject`, `body`, optional `offering_id` | `201 { id }` |
 | `POST /api/messages/threads/:id/reply` | `{ body }` | `201 { ok: true }` |
@@ -122,6 +127,9 @@ Any signed-in role, including admin.
 | `GET /api/notifications` | up to 50 rows, `data` parsed |
 | `GET /api/notifications/summary` | `{ notifications, messages }` |
 | `POST /api/notifications/read-all` | `{ ok: true }` |
+| `POST /api/notifications/:id/read` | `{ ok: true }` |
+| `GET /api/notifications/preferences` | map of type to boolean |
+| `PUT /api/notifications/preferences` | partial map | the saved map |
 
 ## Admin
 

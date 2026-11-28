@@ -6,6 +6,8 @@ The application expects a MySQL database (default name `unidex_db`). A new datab
 
 `001_init.sql` is the contract for a new install. If `users` already exists, the runner does not rebuild the tables, so a database created before that file can still differ in types and foreign keys. The column list on this page matches both the SQL file and the queries.
 
+`005_platform_features.sql` adds `app_settings`, `activity_log`, `notification_preferences`, `notification_dedup`, `announcements`, `course_exams`, `exam_reminder_sent`, and `course_evaluations`. `scripts/migrate.js` also adds attendance photo, location, device, and `marked_by` columns, plus `course_offerings.absence_limit_pct`, when they are missing. Those alters are safe to run again. Face photos stay in `attendance_records.photo`. `course_evaluations` stores `student_id` only to enforce one response per student; instructor reads return the average and, after three responses, comments without names. The admin JSON backup omits password hashes, `qr_secret`, reset tokens, evaluation rows, and photo blobs.
+
 If a column is required for a feature but never set by application code, the database must supply it (a default, or a value inserted outside this repo). Those cases are called out.
 
 ## Purpose and responsibilities

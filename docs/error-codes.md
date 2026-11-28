@@ -55,7 +55,13 @@ Keep client copy and server codes aligned. `translations.js` has an `error.*` en
 | `TIME_CONFLICT` | 409 | Overlapping meeting | `{ course }` |
 | `CREDIT_LIMIT` | 409 | Term hours would exceed the cap | `{ max, current }` |
 | `ALREADY_RECORDED` | 409 | Second scan for the same session | |
-| `QR_EXPIRED` | 400 | Bad, expired, or mismatched QR token | |
+| `QR_EXPIRED` | 400 | Bad, expired, or not the current stored QR token | |
+| `PHOTO_REQUIRED` | 400 | Scan without a JPEG face photo, or a photo outside 32–400000 bytes | |
+| `DEVICE_REQUIRED` | 400 | Scan without `device_id` | |
+| `DEVICE_ALREADY_USED` | 409 | Another student already used this device in the session | |
+| `LOCATION_REQUIRED` | 400 | Session has a fence and the scan has no coordinates | |
+| `GPS_INACCURATE` | 400 | Reported accuracy is above the cap | `{ distance_m }` |
+| `TOO_FAR` | 400 | Distance is outside radius plus reported accuracy | `{ distance_m, radius_m }` |
 | `SESSION_CLOSED` | 400 | Token request or scan when the session is not open | |
 | `INVALID_RESET_TOKEN` | 400 | Reset token missing from the table, already used, or expired | |
 | `RATE_LIMITED` | 429 | Password reset request or confirm over the in-memory per-IP or per-identifier limit | |

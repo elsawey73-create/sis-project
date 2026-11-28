@@ -128,7 +128,23 @@ Exactly 25 percent does not warn, because the comparison is `>`.
 
 ## Current status
 
-**Complete** for open, a 30-second QR, scan, manual override, close, student totals, the absence warning, and the localhost warning.
+**Complete** for open, a rotating QR, scan, manual override, close, student totals, the absence warning, and the localhost warning.
+
+The displayed code now lasts **20 seconds**, not 15 minutes. `POST /sessions/:id/qr/refresh` expires the previous stored token immediately. `POST /attendance/scan` accepts only that current stored token. A JWT signed with the session secret but not stored as the active row is `QR_EXPIRED`.
+
+A scan also requires a JPEG face photo (`photo`, base64, at most 400 KB) and a `device_id`. The photo is stored in `attendance_records.photo` (a `MEDIUMBLOB` in MySQL), so it survives a Railway redeploy. The container disk is not used. The doctor loads each photo from `GET /sessions/:id/students/:studentId/photo`.
+
+When the session has latitude and longitude (Start Lecture sends them), the scan must include the student's coordinates and a reported accuracy. The scan is accepted when `distance <= radius + accuracy` and `accuracy` is at most the accuracy cap (default 40 m). The default radius is 20 m. A weak fix returns `GPS_INACCURATE`. A reading outside the fence returns `TOO_FAR` with `distance_m` and `radius_m`. The distance is stored on the record. A session opened without coordinates still scans, so older rows keep working.
+
+One `device_id` can record one student per session (`DEVICE_ALREADY_USED` for a second student). The same device can record attendance in the next session. Android sends the Capacitor device id. The website sends a persistent random id plus a hash of browser signals.
+
+Closing a session notifies students who have no mark (`marked_absent`). Crossing 80 percent of the absence limit notifies once (`absence_warning`, approaching). Passing the limit notifies once more. The limit is `app_settings.absence_limit_pct` (default 25) unless the offering sets `absence_limit_pct`. Exactly the limit does not count as exceeded (`absent_pct > limit`), matching the old 25 percent rule.
+
+Manual marks set `method = 'manual'` and `marked_by` to the instructor. Marking absent deletes the row and notifies the student.
+
+`GET /attendance/me/history` is the student's session list. `?semester_id=` on `/attendance/me` and the history route selects another term. Reports: `GET /attendance/sessions/:id/report?format=xlsx|pdf` and `GET /attendance/offerings/:id/report?format=xlsx|pdf`.
+
+`auto_close_minutes` (5–180) on open sets `auto_close_at`. The API process closes due sessions about once a minute and also when the session is read.
 
 **Partial** for phones: the warning tells the instructor to reopen on a LAN host. The app cannot invent that host from `localhost`. `meeting_id` is still unused by the UI. Absence is still "no row". A second scan on the student page shows `att.already` as success instead of an error, including when React StrictMode posts twice in development.
 
