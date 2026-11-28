@@ -16,6 +16,8 @@ const TITLES = [
   ['/student/transcript', 'nav.transcript'],
   ['/student/attendance', 'nav.attendance'],
   ['/attend', 'nav.scan'],
+  ['/student/profile', 'profile.edit'],
+  ['/student/password', 'password.change'],
   ['/student', 'nav.home'],
   ['/doctor/attendance', 'nav.attendance'],
   ['/doctor/offerings', 'doc.gradesStudents'],
@@ -38,5 +40,7 @@ export function screenTitleKey(pathname) {
 export function isDetailPath(pathname) {
   return /^\/doctor\/(offerings|attendance)\/[^/]+/.test(pathname)
     || /^\/messages\/[^/]+/.test(pathname)
-    || pathname === '/attend';
+    || pathname === '/attend'
+    || pathname === '/student/profile'
+    || pathname === '/student/password';
 }

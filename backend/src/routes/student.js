@@ -225,4 +225,54 @@ router.post('/evaluations', async (req, res) => {
   res.json({ ok: true });
 });
 
+// Email is the contact field on users. There is no phone column.
+function normalizeStudentEmail(raw) {
+  if (typeof raw !== 'string') return { error: 'MISSING_FIELDS' };
+  const email = raw.trim().toLowerCase();
+  if (!email) return { email: null };
+  if (email.length > 255 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: 'INVALID_EMAIL' };
+  return { email };
+}
+
+// The signed-in student's own contact email. Name, ID, and department stay read-only.
+router.get('/profile', async (req, res) => {
+  const [[row]] = await db.query(
+    'SELECT email FROM users WHERE id = ? AND role = ?',
+    [req.user.id, 'student']
+  );
+  if (!row) throw new HttpError(404, 'NOT_FOUND');
+  res.json({ email: row.email || '' });
+});
+
+router.patch('/profile', async (req, res) => {
+  const parsed = normalizeStudentEmail(req.body && req.body.email);
+  if (parsed.error) throw new HttpError(400, parsed.error);
+
+  const [[student]] = await db.query(
+    'SELECT id FROM users WHERE id = ? AND role = ?',
+    [req.user.id, 'student']
+  );
+  if (!student) throw new HttpError(404, 'NOT_FOUND');
+
+  if (parsed.email) {
+    const [dupes] = await db.query(
+      'SELECT id FROM users WHERE email = ? AND id <> ? LIMIT 1',
+      [parsed.email, req.user.id]
+    );
+    if (dupes.length) throw new HttpError(409, 'DUPLICATE_USER');
+  }
+
+  try {
+    await db.query('UPDATE users SET email = ? WHERE id = ? AND role = ?', [
+      parsed.email,
+      req.user.id,
+      'student',
+    ]);
+  } catch (err) {
+    if (err.code === 'ER_DUP_ENTRY') throw new HttpError(409, 'DUPLICATE_USER');
+    throw err;
+  }
+  res.json({ email: parsed.email || '' });
+});
+
 module.exports = router;

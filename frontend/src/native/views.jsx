@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
-import { Alert, FetchBody, LoadError, Loading, Tag } from '../components/ui';
+import StudentOverview from '../components/StudentOverview';
+import { Alert, FetchBody, LoadError, Tag } from '../components/ui';
 import { hhmm } from '../utils/format';
-import { courseColorClass } from '../utils/schedule';
 import DayAgenda from './DayAgenda';
 import Icon from './icons';
 import { openScanner } from './platform';
@@ -49,113 +49,15 @@ function Chips({ meetings }) {
   );
 }
 
-export function StudentHomeNative({ user, summary, schedule, att, grades, courses, meetings, upcoming, recent }) {
-  const { t, pick } = useLanguage();
-  const student = user.student;
-  const sum = summary.data;
-
+export function StudentHomeNative({ name, studentCode, department, summary }) {
   return (
-    <Stack>
-      <section className="native-hero native-card">
-        <p className="native-kicker">{t('home.welcome')}</p>
-        <h2 className="m0">{pick(user.full_name_ar, user.full_name_en)}</h2>
-        <p className="muted">
-          {t('student.code')}: <bdi>{student?.student_code}</bdi>
-          {' · '}
-          {t('student.department')}: {pick(student?.department_ar, student?.department_en)}
-        </p>
-      </section>
-
-      <button type="button" className="native-scan-cta" onClick={openScanner}>
-        <Icon name="qr" />
-        <span>
-          <strong>{t('nav.scan')}</strong>
-          <small>{t('native.scanHint')}</small>
-        </span>
-      </button>
-
-      {summary.loading ? <Loading /> : summary.error || !sum ? <LoadError error={summary.error} onRetry={summary.reload} /> : (
-        <>
-          <div className="native-metrics">
-            <Metric label={t('stat.cgpa')} value={sum.standing.cgpa ?? '—'} />
-            <Metric label={t('stat.creditsEarned')} value={sum.standing.credits_earned} />
-            <Metric
-              label={t('stat.currentCredits')}
-              value={`${sum.current.credits} / ${sum.max_credits}`}
-              hint={sum.semester ? pick(sum.semester.name_ar, sum.semester.name_en) : ''}
-            />
-          </div>
-          {sum.semester?.registration_open && (
-            <article className="native-card native-card-top">
-              <span><Tag kind="ok">{t('reg.open')}</Tag> {t('home.regHint')}</span>
-              <Link className="b b-primary" to="/student/registration">{t('nav.registration')}</Link>
-            </article>
-          )}
-        </>
-      )}
-
-      <Section title={t('home.nextMeetings')} to="/student/schedule">
-        {schedule.loading ? <Loading /> : schedule.error || schedule.data == null ? <LoadError error={schedule.error} onRetry={schedule.reload} /> : upcoming.length === 0 ? (
-          <p className="native-empty muted">{courses.length === 0 ? t('reg.none') : t('home.noMeetings')}</p>
-        ) : (
-          <Stack>
-            {upcoming.map((meeting, index) => (
-              <article key={`${meeting.code}-${meeting.start_time}-${index}`} className={`native-card native-slot ${courseColorClass(meeting)}`}>
-                <div className="native-slot-time">
-                  <strong><bdi>{hhmm(meeting.start_time)}</bdi></strong>
-                  <span>{t(`day.${meeting.day_of_week}`)}</span>
-                </div>
-                <div>
-                  <strong>{meeting.code}</strong>
-                  <div>{pick(meeting.name_ar, meeting.name_en)}</div>
-                </div>
-              </article>
-            ))}
-          </Stack>
-        )}
-      </Section>
-
-      <Section title={t('home.schedule')} to="/student/schedule">
-        {schedule.loading ? <Loading /> : schedule.error || schedule.data == null ? null : courses.length === 0 ? (
-          <p className="native-empty muted">{t('reg.none')}</p>
-        ) : <DayAgenda items={meetings} />}
-      </Section>
-
-      <Section title={t('home.attendance')} to="/student/attendance">
-        {att.loading ? <Loading /> : att.error || att.data == null ? <LoadError error={att.error} onRetry={att.reload} /> : (
-          <Stack>
-            {att.data.filter((row) => row.warning || row.approaching).map((row) => (
-              <Alert key={row.offering_id} type={row.warning ? 'error' : 'warn'}>
-                {row.warning ? t('att.exceeded') : t('att.approaching')}: <strong>{row.code}</strong> — {pick(row.name_ar, row.name_en)} ({row.absent_pct}%)
-              </Alert>
-            ))}
-            {att.data.length === 0 && <p className="native-empty muted">{t('reg.none')}</p>}
-            {att.data.map((row) => <AttendanceCard key={row.offering_id} row={row} />)}
-          </Stack>
-        )}
-      </Section>
-
-      <Section title={t('home.recentGrades')} to="/student/grades">
-        {grades.loading ? <Loading /> : grades.error || grades.data == null ? <LoadError error={grades.error} onRetry={grades.reload} /> : recent.length === 0 ? (
-          <p className="native-empty muted">{t('grades.none')}</p>
-        ) : (
-          <Stack>
-            {recent.map((row) => (
-              <article key={row.enrollment_id} className="native-card">
-                <div className="native-card-top">
-                  <div>
-                    <span className="native-code">{row.code}</span>
-                    <strong>{pick(row.name_ar, row.name_en)}</strong>
-                  </div>
-                  <span className={`tag ${row.points > 0 ? 'tag-ok' : 'tag-err'}`}>{row.letter}</span>
-                </div>
-                <div className="muted small">{pick(row.semester_ar, row.semester_en)}</div>
-              </article>
-            ))}
-          </Stack>
-        )}
-      </Section>
-    </Stack>
+    <StudentOverview
+      native
+      name={name}
+      studentCode={studentCode}
+      department={department}
+      summary={summary}
+    />
   );
 }
 

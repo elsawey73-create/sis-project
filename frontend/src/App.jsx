@@ -8,10 +8,13 @@ import { AuthProvider, useAuth, homeByRole } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Layout from './components/Layout';
 import { ScreenLoading } from './components/ui';
+import InactivityGuard from './components/InactivityGuard';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword from './pages/ResetPassword';
 import StudentHome from './pages/student/StudentHome';
+import EditProfile from './pages/student/EditProfile';
+import ChangePassword from './pages/student/ChangePassword';
 import Registration from './pages/student/Registration';
 import Schedule from './pages/student/Schedule';
 import Grades from './pages/student/Grades';
@@ -45,6 +48,7 @@ export default function App() {
         {isNativeApp() && <NativeChrome />}
         <AuthProvider>
           <BrowserRouter>
+            <InactivityGuard />
             <Routes>
             <Route path="/" element={<RootRedirect />} />
             <Route path="/login" element={<Login />} />
@@ -70,6 +74,8 @@ export default function App() {
             <Route element={<ProtectedRoute roles={['student']} />}>
               <Route element={<Layout />}>
                 <Route path="/student" element={<StudentHome />} />
+                <Route path="/student/profile" element={<EditProfile />} />
+                <Route path="/student/password" element={<ChangePassword />} />
                 <Route path="/student/registration" element={<Registration />} />
                 <Route path="/student/schedule" element={<Schedule />} />
                 <Route path="/student/grades" element={<Grades />} />
