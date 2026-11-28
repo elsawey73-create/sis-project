@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../api/axios';
 import { useLanguage } from '../context/LanguageContext';
 import { Alert, Loading } from '../components/ui';
 import { errorText } from '../utils/format';
 import { parseAttendanceQr } from './qr';
 import Icon from './icons';
+import FaceCapture from '../components/FaceCapture';
+import { submitAttendance } from '../utils/attendanceScan';
 
 // In-app camera scanner. Posts to the same /attendance/scan route the website uses
 // when a student opens /attend?s=&t= from a QR.
@@ -23,30 +24,30 @@ function ScanAttempt({ onClose, onAgain }) {
   const [notice, setNotice] = useState('');
   const [cameraError, setCameraError] = useState('');
   const [result, setResult] = useState(null);
+  const [parsed, setParsed] = useState(null);
+
+  async function submit(found, photo) {
+    setPhase('submitting');
+    try {
+      const response = await submitAttendance({
+        sessionId: found.sessionId,
+        token: found.token,
+        photo,
+      });
+      setResult({ status: 'ok', data: response.data });
+      setPhase('done');
+    } catch (error) {
+      if (error.response?.data?.error === 'ALREADY_RECORDED') {
+        setResult({ status: 'already' });
+      } else {
+        setResult({ status: 'error', text: errorText(error, t) });
+      }
+      setPhase('done');
+    }
+  }
 
   useEffect(() => {
     let stopped = false;
-
-    async function submit(parsed) {
-      setPhase('submitting');
-      try {
-        const response = await api.post('/attendance/scan', {
-          session_id: parsed.sessionId,
-          token: parsed.token,
-        });
-        if (stopped) return;
-        setResult({ status: 'ok', data: response.data });
-        setPhase('done');
-      } catch (error) {
-        if (stopped) return;
-        if (error.response?.data?.error === 'ALREADY_RECORDED') {
-          setResult({ status: 'already' });
-        } else {
-          setResult({ status: 'error', text: errorText(error, t) });
-        }
-        setPhase('done');
-      }
-    }
 
     async function start() {
       try {
@@ -65,7 +66,8 @@ function ScanAttempt({ onClose, onAgain }) {
             }
             handled.current = true;
             scanner.stop();
-            submit(parsed);
+            setParsed(parsed);
+            setPhase('face');
           },
         );
         if (stopped) {
@@ -107,7 +109,7 @@ function ScanAttempt({ onClose, onAgain }) {
         <h2 className="m0">{t('native.scanTitle')}</h2>
       </header>
 
-      <div className={`native-viewfinder${phase === 'done' || phase === 'error' ? ' is-hidden' : ''}`}>
+      <div className={`native-viewfinder${phase === 'done' || phase === 'error' || phase === 'face' ? ' is-hidden' : ''}`}>
         <video ref={videoRef} muted playsInline autoPlay />
         <div className="native-reticle" />
       </div>
@@ -115,6 +117,12 @@ function ScanAttempt({ onClose, onAgain }) {
       <div className="native-scanner-body">
         {phase === 'opening' && <Loading />}
         {phase === 'scan' && <p className="muted">{t('native.scanHint')}</p>}
+        {phase === 'face' && parsed && (
+          <>
+            <p className="muted">{t('att.faceHint')}</p>
+            <FaceCapture onCapture={(photo) => submit(parsed, photo)} />
+          </>
+        )}
         {phase === 'submitting' && <Loading />}
         {notice && phase === 'scan' && <Alert type="warn">{notice}</Alert>}
         {phase === 'error' && <Alert type="error">{cameraError}</Alert>}

@@ -7,8 +7,91 @@ import { Alert, LoadError, Loading, Tag } from '../../components/ui';
 import { useFeedback } from '../../context/FeedbackContext';
 import { isNativeApp } from '../../native/platform';
 import { errorText, gradeTotal } from '../../utils/format';
+import { downloadFile } from '../../utils/download';
 
 const KEYS = ['coursework', 'midterm', 'practical', 'final_exam'];
+
+function CourseTools({ offeringId, onMessage }) {
+  const { t } = useLanguage();
+  const announcements = useFetch(`/instructor/offerings/${offeringId}/announcements`);
+  const exams = useFetch(`/instructor/offerings/${offeringId}/exams`);
+  const evaluation = useFetch(`/instructor/offerings/${offeringId}/evaluation`);
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
+  const [examTitle, setExamTitle] = useState('');
+  const [examAt, setExamAt] = useState('');
+  const [limit, setLimit] = useState('');
+
+  async function announce(e) {
+    e.preventDefault();
+    try {
+      await api.post(`/instructor/offerings/${offeringId}/announcements`, { title, body });
+      setTitle('');
+      setBody('');
+      announcements.reload();
+      onMessage(t('ann.sent'), 'success');
+    } catch (error) {
+      onMessage(errorText(error, t), 'error');
+    }
+  }
+  async function addExam(e) {
+    e.preventDefault();
+    try {
+      await api.post(`/instructor/offerings/${offeringId}/exams`, { title: examTitle, exam_at: examAt });
+      setExamTitle('');
+      setExamAt('');
+      exams.reload();
+    } catch (error) {
+      onMessage(errorText(error, t), 'error');
+    }
+  }
+  async function saveLimit(e) {
+    e.preventDefault();
+    try {
+      await api.put(`/attendance/offerings/${offeringId}/absence-limit`, { absence_limit_pct: limit === '' ? null : Number(limit) });
+      onMessage(t('common.saved'), 'success');
+    } catch (error) {
+      onMessage(errorText(error, t), 'error');
+    }
+  }
+
+  return (
+    <div className="grid-2 gap-top">
+      <form onSubmit={announce}>
+        <h3 className="m0">{t('ann.title')}</h3>
+        <input required value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('ann.title')} />
+        <textarea required value={body} onChange={(e) => setBody(e.target.value)} placeholder={t('ann.body')} />
+        <button className="b b-primary" type="submit">{t('ann.send')}</button>
+        {(announcements.data || []).slice(0, 3).map((item) => <p key={item.id} className="small muted">{item.title}</p>)}
+      </form>
+      <div>
+        <form onSubmit={addExam}>
+          <h3 className="m0">{t('exam.add')}</h3>
+          <input required value={examTitle} onChange={(e) => setExamTitle(e.target.value)} placeholder={t('exam.title')} />
+          <input required type="datetime-local" value={examAt} onChange={(e) => setExamAt(e.target.value)} />
+          <button className="b b-ghost" type="submit">{t('common.add')}</button>
+        </form>
+        {(exams.data || []).map((exam) => <p key={exam.id} className="small">{exam.title} · {String(exam.exam_at).replace('T', ' ').slice(0, 16)}</p>)}
+        <form onSubmit={saveLimit} className="gap-top">
+          <h3 className="m0">{t('att.limit')}</h3>
+          <input value={limit} onChange={(e) => setLimit(e.target.value)} placeholder="25" inputMode="numeric" />
+          <button className="b b-ghost" type="submit">{t('common.save')}</button>
+        </form>
+        {evaluation.data && (
+          <p className="small">{t('eval.average')}: {evaluation.data.average ?? '—'} · {t('eval.count')}: {evaluation.data.count}</p>
+        )}
+        <div className="row">
+          <button type="button" className="b b-ghost" onClick={() => downloadFile(`/attendance/offerings/${offeringId}/report?format=xlsx`, 'absence.xlsx')}>{t('att.exportXlsx')}</button>
+          <button type="button" className="b b-ghost" onClick={() => downloadFile(`/attendance/offerings/${offeringId}/report?format=pdf`, 'absence.pdf')}>{t('att.exportPdf')}</button>
+        </div>
+        {evaluation.data?.comments?.length > 0 && evaluation.data.comments.map((item, index) => (
+          <p key={index} className="small muted">{item.rating}/5 {item.comment}</p>
+        ))}
+        {evaluation.data && evaluation.data.count > 0 && evaluation.data.count < 3 && <p className="small muted">{t('eval.hidden')}</p>}
+      </div>
+    </div>
+  );
+}
 
 export default function OfferingRoster() {
   const { id } = useParams();
@@ -89,6 +172,7 @@ export default function OfferingRoster() {
         </div>
         <Alert type={msg?.type}>{msg?.text}</Alert>
         <p className="muted small">{t('roster.hint')}</p>
+        <CourseTools offeringId={id} onMessage={(text, type) => { setMsg({ type, text }); toast({ type, message: text }); }} />
 
         {native ? (
           <div className="native-stack">

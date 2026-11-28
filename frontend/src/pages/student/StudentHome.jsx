@@ -2,8 +2,8 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
-import WeeklySchedule from '../../components/WeeklySchedule';
-import { Alert, LoadError, Loading, Stat, Tag } from '../../components/ui';
+import { useCachedFetch } from '../../utils/offlineCache';
+import { Alert, LoadError, Loading, Meter, Stat, Tag } from '../../components/ui';
 import { isNativeApp } from '../../native/platform';
 import { StudentHomeNative } from '../../native/views';
 import { hhmm } from '../../utils/format';
@@ -26,9 +26,9 @@ export default function StudentHome() {
   const { user } = useAuth();
   const { t, pick } = useLanguage();
   const summary = useFetch('/student/summary');
-  const schedule = useFetch('/enrollments/me');
+  const schedule = useCachedFetch('/enrollments/me', 'schedule');
   const att = useFetch('/attendance/me');
-  const grades = useFetch('/student/grades');
+  const grades = useCachedFetch('/student/grades', 'grades');
   const s = user.student;
   const sum = summary.data;
   const courses = schedule.data?.courses || [];
@@ -54,13 +54,17 @@ export default function StudentHome() {
     );
   }
 
+  const offline = schedule.offline || grades.offline;
+
   return (
     <>
-      <div className="card">
-        <h2>{t('home.welcome')} {pick(user.full_name_ar, user.full_name_en)}</h2>
+      <div className="card home-hero">
+        <p className="kicker">{t('home.welcome')}</p>
+        <h2 className="m0">{pick(user.full_name_ar, user.full_name_en)}</h2>
         <p className="muted">
           {t('student.code')}: <bdi>{s?.student_code}</bdi> · {t('student.department')}: {pick(s?.department_ar, s?.department_en)}
         </p>
+        {offline && <Alert type="info">{t('offline.banner')}</Alert>}
       </div>
 
       {summary.loading ? <Loading /> : summary.error || !sum ? <LoadError error={summary.error} onRetry={summary.reload} /> : (
@@ -83,12 +87,6 @@ export default function StudentHome() {
         </>
       )}
 
-      <Block title={t('home.schedule')} to="/student/schedule">
-        {schedule.loading ? <Loading /> : schedule.error || schedule.data == null ? <LoadError error={schedule.error} onRetry={schedule.reload} /> : (
-          courses.length === 0 ? <p className="muted">{t('reg.none')}</p> : <WeeklySchedule items={meetings} />
-        )}
-      </Block>
-
       <Block title={t('home.attendance')} to="/student/attendance">
         <p className="small"><strong>{t('home.nextMeetings')}</strong></p>
         {schedule.loading ? <Loading /> : schedule.error || schedule.data == null ? null : upcoming.length === 0 ? (
@@ -109,27 +107,20 @@ export default function StudentHome() {
         )}
         {att.loading ? <Loading /> : att.error || att.data == null ? <LoadError error={att.error} onRetry={att.reload} /> : (
           <>
-            {att.data.filter((a) => a.warning).map((w) => (
-              <Alert key={w.offering_id} type="warn">
-                {t('att.warning')}: <strong>{w.code}</strong> — {pick(w.name_ar, w.name_en)} ({w.absent_pct}%)
+            {att.data.filter((a) => a.warning || a.approaching).map((w) => (
+              <Alert key={w.offering_id} type={w.warning ? 'error' : 'warn'}>
+                {w.warning ? t('att.exceeded') : t('att.approaching')}: <strong>{w.code}</strong> — {pick(w.name_ar, w.name_en)} ({w.absent_pct}%)
               </Alert>
             ))}
-            <div className="table-wrap gap-top">
-              <table className="table">
-                <thead><tr><th>{t('col.course')}</th><th>{t('att.attended')}</th><th>{t('att.absent')}</th><th /></tr></thead>
-                <tbody>
-                  {att.data.length === 0 && <tr><td colSpan={4} className="muted">{t('reg.none')}</td></tr>}
-                  {att.data.map((a) => (
-                    <tr key={a.offering_id}>
-                      <td><strong>{a.code}</strong> {pick(a.name_ar, a.name_en)}</td>
-                      <td>{a.attended}/{a.total_sessions}</td>
-                      <td>{a.absent} ({a.absent_pct}%)</td>
-                      <td>{a.warning ? <Tag kind="err">{t('att.warning')}</Tag> : <Tag kind="ok">OK</Tag>}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            {att.data.filter((a) => !a.warning && !a.approaching).length === att.data.length && att.data.length > 0 && (
+              <p className="muted">{t('att.allClear')}</p>
+            )}
+            {att.data.slice(0, 3).map((a) => (
+              <div key={a.offering_id} className="gap-top">
+                <div className="row between"><strong>{a.code}</strong><span className="muted small">{a.attended}/{a.total_sessions}</span></div>
+                <Meter value={a.total_sessions ? Math.round((a.attended / a.total_sessions) * 100) : 0} label={a.code} />
+              </div>
+            ))}
           </>
         )}
       </Block>

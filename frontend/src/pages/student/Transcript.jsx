@@ -2,6 +2,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import Brand from '../../components/Brand';
 import { LoadError, Loading, Tag } from '../../components/ui';
+import { downloadFile } from '../../utils/download';
 import { isNativeApp } from '../../native/platform';
 import { TranscriptNative } from '../../native/views';
 
@@ -17,7 +18,11 @@ export default function Transcript() {
     <div className="card transcript">
       <div className="row between no-print">
         <h2 className="m0">{t('nav.transcript')}</h2>
-        <button className="b b-primary" onClick={() => window.print()}>🖨️ {t('transcript.print')}</button>
+        <div className="row">
+          <button className="b b-ghost" onClick={() => downloadFile('/student/transcript.pdf', 'transcript.pdf')}>{t('export.transcript')}</button>
+          <button className="b b-ghost" onClick={() => downloadFile('/student/export.xlsx', 'unidex-record.xlsx')}>{t('export.record')}</button>
+          <button className="b b-primary" onClick={() => window.print()}>🖨️ {t('transcript.print')}</button>
+        </div>
       </div>
 
       <div className="print-head">

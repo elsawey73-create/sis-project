@@ -124,9 +124,9 @@ export function StudentHomeNative({ user, summary, schedule, att, grades, course
       <Section title={t('home.attendance')} to="/student/attendance">
         {att.loading ? <Loading /> : att.error || att.data == null ? <LoadError error={att.error} onRetry={att.reload} /> : (
           <Stack>
-            {att.data.filter((row) => row.warning).map((row) => (
-              <Alert key={row.offering_id} type="warn">
-                {t('att.warning')}: <strong>{row.code}</strong> — {pick(row.name_ar, row.name_en)} ({row.absent_pct}%)
+            {att.data.filter((row) => row.warning || row.approaching).map((row) => (
+              <Alert key={row.offering_id} type={row.warning ? 'error' : 'warn'}>
+                {row.warning ? t('att.exceeded') : t('att.approaching')}: <strong>{row.code}</strong> — {pick(row.name_ar, row.name_en)} ({row.absent_pct}%)
               </Alert>
             ))}
             {att.data.length === 0 && <p className="native-empty muted">{t('reg.none')}</p>}
@@ -169,7 +169,7 @@ function AttendanceCard({ row }) {
           <span className="native-code">{row.code}</span>
           <strong>{pick(row.name_ar, row.name_en)}</strong>
         </div>
-        {row.warning ? <Tag kind="err">{t('att.warning')}</Tag> : <Tag kind="ok">OK</Tag>}
+        {row.warning ? <Tag kind="err">{t('att.exceeded')}</Tag> : row.approaching ? <Tag kind="warn">{t('att.approaching')}</Tag> : <Tag kind="ok">OK</Tag>}
       </div>
       <div className="native-bar" aria-hidden="true"><span style={{ width: `${pct}%` }} /></div>
       <div className="native-score-grid">

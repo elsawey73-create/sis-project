@@ -9,17 +9,18 @@ import NativeShell from '../native/NativeShell';
 import Brand from './Brand';
 import LanguageSwitcher from './LanguageSwitcher';
 import ThemeSwitcher from './ThemeSwitcher';
+import QuickSearch from './QuickSearch';
 
 const links = {
   student: [
     ['/student', 'nav.home', true], ['/student/registration', 'nav.registration'], ['/student/schedule', 'nav.schedule'],
     ['/student/grades', 'nav.grades'], ['/student/transcript', 'nav.transcript'], ['/student/attendance', 'nav.attendance'],
-    ['/catalog', 'nav.catalog'],
+    ['/catalog', 'nav.catalog'], ['/calendar', 'nav.calendar'],
   ],
-  instructor: [['/doctor', 'nav.myCourses', true], ['/catalog', 'nav.catalog']],
+  instructor: [['/doctor', 'nav.myCourses', true], ['/catalog', 'nav.catalog'], ['/calendar', 'nav.calendar']],
   admin: [
     ['/admin', 'nav.dashboard', true], ['/admin/catalog', 'nav.manageCatalog'], ['/admin/offerings', 'nav.offerings'],
-    ['/admin/users', 'nav.users'], ['/catalog', 'nav.catalog'],
+    ['/admin/users', 'nav.users'], ['/catalog', 'nav.catalog'], ['/calendar', 'nav.calendar'],
   ],
 };
 
@@ -173,6 +174,7 @@ function WebLayout() {
             <Brand />
           </div>
           <div className="navbar-user">
+            <QuickSearch />
             <ThemeSwitcher />
             <LanguageSwitcher />
             <NavLink to="/notifications" className="icon-link" title={t('nav.notifications')}>

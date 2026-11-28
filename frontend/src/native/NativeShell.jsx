@@ -41,11 +41,17 @@ const MORE = {
     ['/student/registration', 'nav.registration', 'book'],
     ['/student/transcript', 'nav.transcript', 'doc'],
     ['/catalog', 'nav.catalog', 'catalog'],
+    ['/calendar', 'nav.calendar', 'calendar'],
     ['/messages', 'nav.messages', 'chat'],
     ['/notifications', 'nav.notifications', 'bell'],
   ],
-  instructor: [],
+  instructor: [
+    ['/calendar', 'nav.calendar', 'calendar'],
+    ['/messages', 'nav.messages', 'chat'],
+    ['/notifications', 'nav.notifications', 'bell'],
+  ],
   admin: [
+    ['/calendar', 'nav.calendar', 'calendar'],
     ['/catalog', 'nav.catalog', 'catalog'],
     ['/notifications', 'nav.notifications', 'bell'],
   ],

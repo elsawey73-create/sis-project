@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { QRCodeSVG } from 'qrcode.react';
 import api from '../../api/axios';
@@ -7,6 +7,7 @@ import { Alert, LoadError, Loading, Stat } from '../../components/ui';
 import { useFeedback } from '../../context/FeedbackContext';
 import { isNativeApp } from '../../native/platform';
 import { errorText } from '../../utils/format';
+import { downloadFile } from '../../utils/download';
 
 function formatRemaining(totalSeconds) {
   const s = Math.max(0, Number(totalSeconds) || 0);
@@ -26,6 +27,8 @@ export default function AttendanceSession() {
   const [error, setError] = useState('');
   const { toast } = useFeedback();
   const [refreshing, setRefreshing] = useState(false);
+  const [photos, setPhotos] = useState({});
+  const photosRef = useRef({});
 
   const loadInfo = useCallback(
     () => api.get(`/attendance/sessions/${id}`)
@@ -81,6 +84,35 @@ export default function AttendanceSession() {
     loadQr();
     return undefined;
   }, [open, loadQr]);
+
+  // Rotate the code every 20 seconds. Refresh slightly early so a new code is
+  // on screen as the previous one is invalidated.
+  const refreshDelay = qr?.deadline ? Math.max(0, qr.deadline - now - 1500) : null;
+  useEffect(() => {
+    if (!open || !qr?.token || refreshDelay == null) return undefined;
+    const timer = window.setTimeout(() => { refreshQr(); }, Math.max(500, refreshDelay));
+    return () => window.clearTimeout(timer);
+  }, [open, qr?.token, refreshDelay]);
+
+  useEffect(() => {
+    if (!info) return undefined;
+    let alive = true;
+    info.students.filter((student) => student.has_photo && !photosRef.current[student.student_id]).forEach((student) => {
+      api.get(`/attendance/sessions/${id}/students/${student.student_id}/photo`, { responseType: 'blob' })
+        .then((response) => {
+          if (!alive) return;
+          const url = URL.createObjectURL(response.data);
+          photosRef.current[student.student_id] = url;
+          setPhotos((current) => ({ ...current, [student.student_id]: url }));
+        })
+        .catch(() => {});
+    });
+    return () => { alive = false; };
+  }, [info, id]);
+
+  useEffect(() => () => {
+    Object.values(photosRef.current).forEach((url) => URL.revokeObjectURL(url));
+  }, []);
 
   async function refreshQr() {
     setRefreshing(true);
@@ -161,6 +193,8 @@ export default function AttendanceSession() {
               <p className="muted small">{native ? t('att.qrHintApp') : t('att.qrHint')}</p>
               <div className="row qr-actions">
                 <button className="b b-ghost" disabled={refreshing} onClick={refreshQr}>{t('att.refreshQr')}</button>
+                <button className="b b-ghost" onClick={() => downloadFile(`/attendance/sessions/${id}/report?format=xlsx`, `attendance-${id}.xlsx`)}>{t('att.exportXlsx')}</button>
+                <button className="b b-ghost" onClick={() => downloadFile(`/attendance/sessions/${id}/report?format=pdf`, `attendance-${id}.pdf`)}>{t('att.exportPdf')}</button>
                 <button className="b b-danger" onClick={close}>{t('att.close')}</button>
               </div>
             </>
@@ -178,7 +212,10 @@ export default function AttendanceSession() {
                     <div>
                       <strong>{pick(s.full_name_ar, s.full_name_en)}</strong>
                       <div className="muted small"><bdi>{s.student_code}</bdi></div>
+                      {s.method === 'manual' && <div className="muted small">{t('att.manualBy')} {pick(s.marked_by_ar, s.marked_by_en)}</div>}
+                      {s.distance_m != null && <div className="muted small">{t('att.distance')}: {s.distance_m} m</div>}
                     </div>
+                    {photos[s.student_id] && <img className="face-thumb" src={photos[s.student_id]} alt="" />}
                   </div>
                   <select className={`status-select status-${s.status || 'absent'}`} value={s.status || 'absent'} onChange={(e) => mark(s.student_id, e.target.value)}>
                     {['present', 'late', 'excused', 'absent'].map((v) => <option key={v} value={v}>{t('att.s.' + v)}</option>)}
@@ -188,13 +225,22 @@ export default function AttendanceSession() {
             </div>
           ) : (
           <div className="table-wrap gap-top">
-            <table className="table">
+            <table className="table table-cards">
               <tbody>
                 {students.map((s) => (
                   <tr key={s.student_id}>
                     <td><bdi>{s.student_code}</bdi></td>
-                    <td>{pick(s.full_name_ar, s.full_name_en)}</td>
-                    <td>
+                    <td data-label={t('col.student')}>
+                      <div className="person-cell">
+                        {photos[s.student_id] && <img className="face-thumb" src={photos[s.student_id]} alt="" />}
+                        <div>
+                          {pick(s.full_name_ar, s.full_name_en)}
+                          {s.method === 'manual' && <div className="muted small">{t('att.manualBy')} {pick(s.marked_by_ar, s.marked_by_en)}</div>}
+                          {s.distance_m != null && <div className="muted small">{t('att.distance')}: {s.distance_m} m</div>}
+                        </div>
+                      </div>
+                    </td>
+                    <td data-label={t('att.attended')}>
                       <select className={`status-select status-${s.status || 'absent'}`} value={s.status || 'absent'} onChange={(e) => mark(s.student_id, e.target.value)}>
                         {['present', 'late', 'excused', 'absent'].map((v) => <option key={v} value={v}>{t('att.s.' + v)}</option>)}
                       </select>

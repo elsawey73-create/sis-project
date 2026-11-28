@@ -28,6 +28,7 @@ import AdminUsers from './pages/admin/AdminUsers';
 import Catalog from './pages/shared/Catalog';
 import Messages from './pages/shared/Messages';
 import Notifications from './pages/shared/Notifications';
+import Calendar from './pages/shared/Calendar';
 
 // "/" sends each role to its home page.
 function RootRedirect() {
@@ -54,6 +55,7 @@ export default function App() {
             <Route element={<ProtectedRoute />}>
               <Route element={<Layout />}>
                 <Route path="/catalog" element={<Catalog />} />
+                <Route path="/calendar" element={<Calendar />} />
                 <Route path="/notifications" element={<Notifications />} />
               </Route>
             </Route>
