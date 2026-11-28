@@ -246,3 +246,48 @@ exports.resetPassword = async (req, res) => {
   if (!updated) return res.status(400).json({ error: 'INVALID_RESET_TOKEN' });
   res.json({ ok: true });
 };
+
+// POST /api/auth/change-password. Body: { current_password, password }.
+// Checks the current password, then replaces every open session with a new one.
+exports.changePassword = async (req, res) => {
+  const body = req.body || {};
+  const current = body.current_password;
+  const password = body.password;
+  if (typeof current !== 'string' || !current || password === undefined || password === null || password === '') {
+    return res.status(400).json({ error: 'MISSING_FIELDS' });
+  }
+  if (String(password).length < 6) return res.status(400).json({ error: 'WEAK_PASSWORD' });
+
+  const ip = clientIp(req);
+  if (!rateLimit(`pwchange:id:${req.user.id}`, RESET_LIMIT_ID, RESET_WINDOW_MS)) return limited(res);
+  if (!rateLimit(`pwchange:ip:${ip}`, RESET_LIMIT_IP, RESET_WINDOW_MS)) return limited(res);
+
+  const [rows] = await db.query(
+    'SELECT id, role, password_hash FROM users WHERE id = ?',
+    [req.user.id]
+  );
+  const user = rows[0];
+  if (!user) return res.status(404).json({ error: 'USER_NOT_FOUND' });
+
+  const matches = await bcrypt.compare(String(current), user.password_hash);
+  if (!matches) return res.status(400).json({ error: 'CURRENT_PASSWORD_INVALID' });
+
+  const passwordHash = await bcrypt.hash(String(password), 10);
+  const fresh = await withTx(async (conn) => {
+    await conn.query(
+      'UPDATE users SET password_hash = ?, token_version = token_version + 1 WHERE id = ?',
+      [passwordHash, user.id]
+    );
+    await conn.query(
+      'UPDATE password_reset_tokens SET used_at = NOW() WHERE user_id = ? AND used_at IS NULL',
+      [user.id]
+    );
+    const [[next]] = await conn.query(
+      'SELECT id, role, token_version FROM users WHERE id = ?',
+      [user.id]
+    );
+    return next;
+  });
+
+  res.json({ ok: true, ...issueSession(fresh) });
+};
