@@ -7,36 +7,7 @@ import { Alert, LoadError, Loading, Stat, Tag } from '../../components/ui';
 import { isNativeApp } from '../../native/platform';
 import { StudentHomeNative } from '../../native/views';
 import { hhmm } from '../../utils/format';
-
-const WEEK = ['Sat', 'Sun', 'Mon', 'Tue', 'Wed', 'Thu'];
-const FROM_JS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-function minutesOf(time) {
-  const [h, m] = String(time || '').slice(0, 5).split(':').map(Number);
-  return (Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0);
-}
-
-// Next remaining meeting day in the Sat–Thu week. Friday has no classes.
-function nextMeetings(courses, now = new Date()) {
-  const todayIdx = WEEK.indexOf(FROM_JS[now.getDay()]);
-  const nowMin = now.getHours() * 60 + now.getMinutes();
-  const items = (courses || []).flatMap((c) => (c.meetings || []).map((m) => ({
-    ...m,
-    code: c.code,
-    name_ar: c.name_ar,
-    name_en: c.name_en,
-    idx: WEEK.indexOf(m.day_of_week),
-  }))).filter((m) => m.idx >= 0);
-  if (!items.length) return [];
-  const rank = (m) => {
-    if (todayIdx < 0) return m.idx + 1;
-    if (m.idx > todayIdx) return m.idx;
-    if (m.idx === todayIdx && minutesOf(m.start_time) > nowMin) return m.idx;
-    return m.idx + 7;
-  };
-  const best = Math.min(...items.map(rank));
-  return items.filter((m) => rank(m) === best).sort((a, b) => (a.start_time < b.start_time ? -1 : 1));
-}
+import { nextScheduleMeetings } from '../../utils/schedule';
 
 function Block({ title, to, children }) {
   const { t } = useLanguage();
@@ -61,8 +32,10 @@ export default function StudentHome() {
   const s = user.student;
   const sum = summary.data;
   const courses = schedule.data?.courses || [];
-  const meetings = courses.flatMap((c) => (c.meetings || []).map((m) => ({ ...m, code: c.code, name_ar: c.name_ar, name_en: c.name_en })));
-  const upcoming = nextMeetings(courses);
+  const meetings = courses.flatMap((c) => (c.meetings || []).map((m) => ({
+    ...m, code: c.code, section: c.section, name_ar: c.name_ar, name_en: c.name_en,
+  })));
+  const upcoming = nextScheduleMeetings(courses);
   const recent = (grades.data || []).slice(0, 5);
 
   if (isNativeApp()) {

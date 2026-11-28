@@ -574,13 +574,34 @@ input.num { width: 72px; padding: 6px 8px; }
   .app-top { box-shadow: none; }
 }
 
-/* Weekly schedule */
-.week { display: grid; grid-template-columns: repeat(6, minmax(140px, 1fr)); gap: 8px; overflow-x: auto; margin-top: 12px; padding-bottom: 2px; }
+/* Weekly schedule. Sunday through Thursday. Each course+section uses one tone. */
+.week { display: grid; grid-template-columns: repeat(5, minmax(140px, 1fr)); gap: 8px; overflow-x: auto; margin-top: 12px; padding-bottom: 2px; }
 .week-day { background: var(--color-bg); border: 1px solid var(--color-border); border-radius: 12px; padding: 8px; min-height: 120px; }
 .week-head { font-weight: 700; text-align: center; margin-bottom: 8px; color: var(--color-text); }
 .slot { background: var(--color-primary-light); color: var(--color-text); border-radius: 8px; padding: 6px 8px; margin-bottom: 6px; border-inline-start: 4px solid var(--color-primary); }
-.slot-lab { background: color-mix(in srgb, var(--color-warning) 22%, var(--color-surface)); border-inline-start-color: var(--color-warning); }
-.slot-section { background: color-mix(in srgb, var(--color-success) 20%, var(--color-surface)); border-inline-start-color: var(--color-success); }
+.slot-tone-0 { --slot-accent: #2563EB; }
+.slot-tone-1 { --slot-accent: #059669; }
+.slot-tone-2 { --slot-accent: #D97706; }
+.slot-tone-3 { --slot-accent: #DB2777; }
+.slot-tone-4 { --slot-accent: #7C3AED; }
+.slot-tone-5 { --slot-accent: #0891B2; }
+.slot-tone-6 { --slot-accent: #EA580C; }
+.slot-tone-7 { --slot-accent: #4F46E5; }
+.slot-tone-8 { --slot-accent: #65A30D; }
+.slot-tone-9 { --slot-accent: #0284C7; }
+.slot-tone-10 { --slot-accent: #C026D3; }
+.slot-tone-11 { --slot-accent: #0D9488; }
+.slot-tone-12 { --slot-accent: #E11D48; }
+.slot-tone-13 { --slot-accent: #CA8A04; }
+.slot-tone-14 { --slot-accent: #16A34A; }
+.slot-tone-15 { --slot-accent: #9333EA; }
+.slot[class*="slot-tone-"] {
+  background: color-mix(in srgb, var(--slot-accent) 26%, var(--color-surface));
+  border-inline-start-color: var(--slot-accent);
+  color: var(--color-text);
+}
+.slot[class*="slot-tone-"] .muted { color: #334155; }
+[data-theme="dark"] .slot[class*="slot-tone-"] .muted { color: #E2E8F0; }
 
 /* Messages */
 .msg-layout { display: grid; grid-template-columns: 300px 1fr; gap: 16px; align-items: start; }
@@ -827,7 +848,6 @@ textarea,
 .week-day:nth-child(3) { animation-delay: 60ms; }
 .week-day:nth-child(4) { animation-delay: 90ms; }
 .week-day:nth-child(5) { animation-delay: 120ms; }
-.week-day:nth-child(6) { animation-delay: 150ms; }
 .msg-view { animation: rise-in 320ms var(--ease-out) backwards; }
 .count { animation: pop 220ms var(--ease-out) backwards; }
 .slot { transition: transform 160ms ease-out, background-color 220ms ease-out, border-color 220ms ease-out; }

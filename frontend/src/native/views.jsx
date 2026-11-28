@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { useLanguage } from '../context/LanguageContext';
 import { Alert, FetchBody, LoadError, Loading, Tag } from '../components/ui';
 import { hhmm } from '../utils/format';
+import { courseColorClass } from '../utils/schedule';
 import DayAgenda from './DayAgenda';
 import Icon from './icons';
 import { openScanner } from './platform';
@@ -99,7 +100,7 @@ export function StudentHomeNative({ user, summary, schedule, att, grades, course
         ) : (
           <Stack>
             {upcoming.map((meeting, index) => (
-              <article key={`${meeting.code}-${meeting.start_time}-${index}`} className="native-card native-slot">
+              <article key={`${meeting.code}-${meeting.start_time}-${index}`} className={`native-card native-slot ${courseColorClass(meeting)}`}>
                 <div className="native-slot-time">
                   <strong><bdi>{hhmm(meeting.start_time)}</bdi></strong>
                   <span>{t(`day.${meeting.day_of_week}`)}</span>

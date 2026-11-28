@@ -496,6 +496,16 @@ html.native-app .native-slot.slot-section {
   border-inline-start-color: var(--color-success);
 }
 
+html.native-app .native-slot[class*="slot-tone-"] {
+  background: color-mix(in srgb, var(--slot-accent) 26%, var(--color-surface));
+  border-inline-start-color: var(--slot-accent);
+  color: var(--color-text);
+}
+
+html.native-app .native-slot[class*="slot-tone-"] .muted { color: #334155; }
+
+[data-theme="dark"] html.native-app .native-slot[class*="slot-tone-"] .muted { color: #E2E8F0; }
+
 html.native-app .native-slot-time {
   display: flex;
   flex-direction: column;
