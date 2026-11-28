@@ -208,7 +208,7 @@ export default function OfferingRoster() {
           </div>
         ) : (
         <div className="table-wrap">
-          <table className="table grades-table">
+          <table className="table grades-table table-cards">
             <thead>
               <tr>
                 <th>ID</th><th>{t('col.student')}</th><th>{t('att.attended')} ({total_sessions})</th>
@@ -224,15 +224,15 @@ export default function OfferingRoster() {
                 const total = gradeTotal(row, hasPrac);
                 return (
                   <tr key={s.enrollment_id}>
-                    <td><bdi>{s.student_code}</bdi></td>
-                    <td>{pick(s.full_name_ar, s.full_name_en)}</td>
-                    <td>{s.attended}/{total_sessions}</td>
+                    <td className="card-title" data-label="ID"><bdi>{s.student_code}</bdi></td>
+                    <td data-label={t('col.student')}>{pick(s.full_name_ar, s.full_name_en)}</td>
+                    <td data-label={t('att.attended')}>{s.attended}/{total_sessions}</td>
                     {KEYS.filter((k) => hasPrac || k !== 'practical').map((k) => (
-                      <td key={k}><input className="num" type="number" min="0" max={max[k]} step="0.5" value={val(s, k)} onChange={(e) => edit(s, k, e.target.value)} /></td>
+                      <td key={k} data-label={t(k === 'final_exam' ? 'grade.final' : k === 'coursework' ? 'grade.coursework' : k === 'midterm' ? 'grade.midterm' : 'grade.practical')}><input className="num" type="number" min="0" max={max[k]} step="0.5" value={val(s, k)} onChange={(e) => edit(s, k, e.target.value)} /></td>
                     ))}
-                    <td><strong>{total ?? '—'}</strong></td>
-                    <td>{s.letter ?? '—'}</td>
-                    <td>{s.published ? <Tag kind="ok">{t('roster.live')}</Tag> : <Tag kind="muted">{t('roster.draft')}</Tag>}</td>
+                    <td data-label={t('grade.total')}><strong>{total ?? '—'}</strong></td>
+                    <td data-label={t('grade.letter')}>{s.letter ?? '—'}</td>
+                    <td data-label="">{s.published ? <Tag kind="ok">{t('roster.live')}</Tag> : <Tag kind="muted">{t('roster.draft')}</Tag>}</td>
                   </tr>
                 );
               })}
@@ -267,14 +267,16 @@ export default function OfferingRoster() {
           </div>
         ) : (
           <div className="table-wrap">
-            <table className="table">
+            <table className="table table-cards">
               <thead><tr><th>#</th><th>{t('att.date')}</th><th>{t('att.attended')}</th><th /></tr></thead>
               <tbody>
-                {sessions.data.length === 0 && <tr><td colSpan={4} className="muted">{t('reg.none')}</td></tr>}
+                {sessions.data.length === 0 && <tr className="empty-row"><td colSpan={4} className="muted">{t('reg.none')}</td></tr>}
                 {sessions.data.map((s) => (
                   <tr key={s.id}>
-                    <td>{s.id}</td><td>{s.session_date}</td><td>{s.present_count}</td>
-                    <td className="actions">
+                    <td className="card-title" data-label="#">#{s.id}</td>
+                    <td data-label={t('att.date')}>{s.session_date}</td>
+                    <td data-label={t('att.attended')}>{s.present_count}</td>
+                    <td data-label="" className="actions">
                       {s.status === 'open' ? (
                         <button className="b b-primary" disabled={qrBusy === s.id} onClick={() => openQr(s.id)}>{t('doc.generateQr')}</button>
                       ) : (

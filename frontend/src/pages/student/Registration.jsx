@@ -100,17 +100,17 @@ export default function Registration() {
           {(enr) => (
           <>
             <div className="table-wrap">
-              <table className="table">
+              <table className="table table-cards">
                 <thead><tr><th>{t('col.code')}</th><th>{t('col.course')}</th><th>{t('col.credits')}</th><th>{t('col.schedule')}</th><th /></tr></thead>
                 <tbody>
-                  {enr.courses.length === 0 && <tr><td colSpan={5} className="muted">{t('reg.none')}</td></tr>}
+                  {enr.courses.length === 0 && <tr className="empty-row"><td colSpan={5} className="muted">{t('reg.none')}</td></tr>}
                   {enr.courses.map((c) => (
                     <tr key={c.enrollment_id}>
-                      <td><strong>{c.code}</strong></td>
-                      <td>{pick(c.name_ar, c.name_en)}</td>
-                      <td>{c.credit_hours}</td>
-                      <td className="small">{meetingsText(c)}</td>
-                      <td>
+                      <td className="card-title" data-label={t('col.code')}><strong>{c.code}</strong></td>
+                      <td data-label={t('col.course')}>{pick(c.name_ar, c.name_en)}</td>
+                      <td data-label={t('col.credits')}>{c.credit_hours}</td>
+                      <td className="small" data-label={t('col.schedule')}>{meetingsText(c)}</td>
+                      <td data-label="">
                         {c.status === 'enrolled'
                           ? <button className="btn-small" disabled={busy || !open} onClick={() => act(() => api.delete(`/enrollments/${c.enrollment_id}`), 'reg.dropped')}>{t('reg.drop')}</button>
                           : <Tag kind={c.status === 'failed' ? 'err' : 'info'}>{t(c.status === 'failed' ? 'reg.failed' : 'reg.completed')}</Tag>}
@@ -139,21 +139,21 @@ export default function Registration() {
         <FetchBody loading={offers.loading} error={offers.error} data={offers.data} onRetry={offers.reload}>
           {(list) => (
           <div className="table-wrap">
-            <table className="table">
+            <table className="table table-cards">
               <thead>
                 <tr><th>{t('col.code')}</th><th>{t('col.course')}</th><th>{t('col.credits')}</th><th>{t('col.instructor')}</th><th>{t('col.schedule')}</th><th>{t('col.seats')}</th><th /></tr>
               </thead>
               <tbody>
-                {list.length === 0 && <tr><td colSpan={7} className="muted">{t('reg.none')}</td></tr>}
+                {list.length === 0 && <tr className="empty-row"><td colSpan={7} className="muted">{t('reg.none')}</td></tr>}
                 {list.map((o) => (
                   <tr key={o.id}>
-                    <td><strong>{o.code}</strong></td>
-                    <td>{pick(o.name_ar, o.name_en)}</td>
-                    <td>{o.credit_hours}</td>
-                    <td>{pick(o.instructor_ar, o.instructor_en)}</td>
-                    <td className="small">{meetingsText(o)}</td>
-                    <td>{o.enrolled_count}/{o.capacity}</td>
-                    <td>{action(o)}</td>
+                    <td className="card-title" data-label={t('col.code')}><strong>{o.code}</strong></td>
+                    <td data-label={t('col.course')}>{pick(o.name_ar, o.name_en)}</td>
+                    <td data-label={t('col.credits')}>{o.credit_hours}</td>
+                    <td data-label={t('col.instructor')}>{pick(o.instructor_ar, o.instructor_en)}</td>
+                    <td className="small" data-label={t('col.schedule')}>{meetingsText(o)}</td>
+                    <td data-label={t('col.seats')}>{o.enrolled_count}/{o.capacity}</td>
+                    <td data-label="">{action(o)}</td>
                   </tr>
                 ))}
               </tbody>

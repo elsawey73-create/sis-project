@@ -187,6 +187,7 @@ export default function AttendanceSession() {
                 <>
                   <p className="muted small qr-timer-label">{t('att.qrRemaining')}</p>
                   <p className="qr-timer">{formatRemaining(remaining)}</p>
+                  <div className="qr-meter" aria-hidden="true"><span style={{ width: `${Math.min(100, (remaining / 20) * 100)}%` }} /></div>
                 </>
               )}
               {tokenError && <LoadError error={tokenError} onRetry={showCode ? refreshQr : loadQr} />}
@@ -204,53 +205,25 @@ export default function AttendanceSession() {
         </div>
         <div className={native ? 'native-stack' : 'card'}>
           <Stat label={t('att.attended')} value={`${present} / ${total}`} />
-          {native ? (
-            <div className="native-stack">
-              {students.map((s) => (
-                <article key={s.student_id} className="native-card">
-                  <div className="native-card-top">
-                    <div>
-                      <strong>{pick(s.full_name_ar, s.full_name_en)}</strong>
-                      <div className="muted small"><bdi>{s.student_code}</bdi></div>
-                      {s.method === 'manual' && <div className="muted small">{t('att.manualBy')} {pick(s.marked_by_ar, s.marked_by_en)}</div>}
-                      {s.distance_m != null && <div className="muted small">{t('att.distance')}: {s.distance_m} m</div>}
-                    </div>
-                    {photos[s.student_id] && <img className="face-thumb" src={photos[s.student_id]} alt="" />}
-                  </div>
-                  <select className={`status-select status-${s.status || 'absent'}`} value={s.status || 'absent'} onChange={(e) => mark(s.student_id, e.target.value)}>
-                    {['present', 'late', 'excused', 'absent'].map((v) => <option key={v} value={v}>{t('att.s.' + v)}</option>)}
-                  </select>
-                </article>
-              ))}
-            </div>
-          ) : (
-          <div className="table-wrap gap-top">
-            <table className="table table-cards">
-              <tbody>
-                {students.map((s) => (
-                  <tr key={s.student_id}>
-                    <td><bdi>{s.student_code}</bdi></td>
-                    <td data-label={t('col.student')}>
-                      <div className="person-cell">
-                        {photos[s.student_id] && <img className="face-thumb" src={photos[s.student_id]} alt="" />}
-                        <div>
-                          {pick(s.full_name_ar, s.full_name_en)}
-                          {s.method === 'manual' && <div className="muted small">{t('att.manualBy')} {pick(s.marked_by_ar, s.marked_by_en)}</div>}
-                          {s.distance_m != null && <div className="muted small">{t('att.distance')}: {s.distance_m} m</div>}
-                        </div>
-                      </div>
-                    </td>
-                    <td data-label={t('att.attended')}>
-                      <select className={`status-select status-${s.status || 'absent'}`} value={s.status || 'absent'} onChange={(e) => mark(s.student_id, e.target.value)}>
-                        {['present', 'late', 'excused', 'absent'].map((v) => <option key={v} value={v}>{t('att.s.' + v)}</option>)}
-                      </select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          {students.length === 0 && <p className="muted">{t('reg.none')}</p>}
+          <div className="roster-list">
+            {students.map((s) => (
+              <article key={s.student_id} className="roster-card">
+                {photos[s.student_id]
+                  ? <img className="face-thumb" src={photos[s.student_id]} alt="" />
+                  : <span className="thread-avatar" aria-hidden="true">{(pick(s.full_name_ar, s.full_name_en) || '?').trim().charAt(0)}</span>}
+                <div>
+                  <strong>{pick(s.full_name_ar, s.full_name_en)}</strong>
+                  <div className="muted small"><bdi>{s.student_code}</bdi></div>
+                  {s.method === 'manual' && <div className="muted small">{t('att.manualBy')} {pick(s.marked_by_ar, s.marked_by_en)}</div>}
+                  {s.distance_m != null && <div className="muted small">{t('att.distance')}: {s.distance_m} m</div>}
+                </div>
+                <select className={`status-select status-${s.status || 'absent'}`} value={s.status || 'absent'} onChange={(e) => mark(s.student_id, e.target.value)} aria-label={t('att.attended')}>
+                  {['present', 'late', 'excused', 'absent'].map((v) => <option key={v} value={v}>{t('att.s.' + v)}</option>)}
+                </select>
+              </article>
+            ))}
           </div>
-          )}
         </div>
       </div>
     </>

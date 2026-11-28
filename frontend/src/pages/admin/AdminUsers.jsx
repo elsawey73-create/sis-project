@@ -114,14 +114,16 @@ export default function AdminUsers() {
         </div>
         ) : (
         <div className="table-wrap">
-          <table className="table">
+          <table className="table table-cards">
             <thead><tr><th>ID</th><th>{t('col.name')}</th><th>{t('users.role')}</th><th /></tr></thead>
             <tbody>
-              {list.length === 0 && <tr><td colSpan={4} className="muted">{t('reg.none')}</td></tr>}
+              {list.length === 0 && <tr className="empty-row"><td colSpan={4} className="muted">{t('reg.none')}</td></tr>}
               {list.map((u) => (
                 <tr key={u.id}>
-                  <td><bdi>{u.login_id}</bdi></td><td>{pick(u.full_name_ar, u.full_name_en)}</td><td>{t('role.' + u.role)}</td>
-                  <td>
+                  <td className="card-title" data-label="ID"><bdi>{u.login_id}</bdi></td>
+                  <td data-label={t('col.name')}>{pick(u.full_name_ar, u.full_name_en)}</td>
+                  <td data-label={t('users.role')}>{t('role.' + u.role)}</td>
+                  <td data-label="">
                     <button type="button" className="b b-ghost" onClick={() => resetPassword(u.id)}>{t('users.resetPw')}</button>
                   </td>
                 </tr>
