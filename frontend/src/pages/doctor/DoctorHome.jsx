@@ -32,7 +32,9 @@ export default function DoctorHome() {
 
   if (loading) return <Loading />;
   if (error || data == null) return <LoadError error={error} onRetry={reload} />;
-  const items = data.flatMap((o) => o.meetings.map((m) => ({ ...m, code: o.code, name_ar: o.name_ar, name_en: o.name_en })));
+  const items = data.flatMap((o) => o.meetings.map((m) => ({
+    ...m, code: o.code, section: o.section, name_ar: o.name_ar, name_en: o.name_en,
+  })));
   const open = data.filter((o) => o.open_session_id);
   const pending = data.filter((o) => Number(o.pending_grades) > 0);
   const pendingTotal = data.reduce((n, o) => n + Number(o.pending_grades || 0), 0);

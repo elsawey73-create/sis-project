@@ -10,7 +10,9 @@ export default function Schedule() {
   const { data, error, loading, reload } = useFetch('/enrollments/me');
   if (loading) return <Loading />;
   if (error || data == null) return <LoadError error={error} onRetry={reload} />;
-  const items = data.courses.flatMap((c) => c.meetings.map((m) => ({ ...m, code: c.code, name_ar: c.name_ar, name_en: c.name_en })));
+  const items = data.courses.flatMap((c) => c.meetings.map((m) => ({
+    ...m, code: c.code, section: c.section, name_ar: c.name_ar, name_en: c.name_en,
+  })));
   if (isNativeApp()) {
     return (
       <div className="native-stack">

@@ -1,17 +1,12 @@
 import { useLanguage } from '../context/LanguageContext';
-import { DAYS, hhmm } from '../utils/format';
+import { hhmm } from '../utils/format';
+import { SCHEDULE_DAYS, courseColorClass, scheduleDayName } from '../utils/schedule';
 
-const FROM_JS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-
-function teachingDay() {
-  return FROM_JS[new Date().getDay()];
-}
-
-// One card per teaching day, instead of the website's six-column week grid.
+// One card per shown day (Sunday–Thursday), instead of the website's week grid.
 export default function DayAgenda({ items }) {
   const { t, pick } = useLanguage();
-  const today = teachingDay();
-  const groups = DAYS.map((day) => ({
+  const today = scheduleDayName();
+  const groups = SCHEDULE_DAYS.map((day) => ({
     day,
     list: items.filter((item) => item.day_of_week === day).sort((a, b) => (a.start_time < b.start_time ? -1 : 1)),
   })).filter((group) => group.list.length);
@@ -27,7 +22,7 @@ export default function DayAgenda({ items }) {
             {group.day === today && <span className="tag tag-info">{t('native.today')}</span>}
           </header>
           {group.list.map((item, index) => (
-            <article key={`${item.code}-${item.start_time}-${index}`} className={`native-slot slot-${item.type || 'lecture'}`}>
+            <article key={`${item.code}-${item.start_time}-${index}`} className={`native-slot ${courseColorClass(item)}`}>
               <div className="native-slot-time">
                 <strong><bdi>{hhmm(item.start_time)}</bdi></strong>
                 <span>{hhmm(item.end_time)}</span>
