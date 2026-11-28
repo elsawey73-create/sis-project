@@ -94,7 +94,7 @@ function HistoryList({ rows, loading }) {
             const status = statusOf(row);
             return (
               <tr key={row.session_id}>
-                <td data-label={t('att.date')}>{String(row.session_date).slice(0, 10)}</td>
+                <td className="card-title" data-label={t('att.date')}>{String(row.session_date).slice(0, 10)}</td>
                 <td data-label={t('col.course')}><strong>{row.code}</strong> {pick(row.name_ar, row.name_en)}</td>
                 <td data-label={t('att.attended')}><Tag kind={status === 'absent' ? 'err' : status === 'pending' ? 'muted' : 'ok'}>{t('att.s.' + status)}</Tag></td>
                 <td data-label={t('att.distance')}>{row.distance_m == null ? '—' : `${row.distance_m} m`}</td>

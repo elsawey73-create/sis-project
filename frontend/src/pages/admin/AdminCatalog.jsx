@@ -79,13 +79,15 @@ export default function AdminCatalog() {
           </div>
         ) : (
         <div className="table-wrap">
-        <table className="table">
+        <table className="table table-cards">
           <tbody>
-            {depts.data.length === 0 && <tr><td className="muted">{t('reg.none')}</td></tr>}
+            {depts.data.length === 0 && <tr className="empty-row"><td className="muted">{t('reg.none')}</td></tr>}
             {depts.data.map((d) => (
               <tr key={d.id}>
-                <td><strong>{d.code}</strong></td><td>{d.name_ar}</td><td>{d.name_en}</td>
-                <td><button type="button" className="btn-small" onClick={() => remove(`/departments/${d.id}`)}>{t('common.delete')}</button></td>
+                <td className="card-title" data-label={t('col.code')}><strong>{d.code}</strong></td>
+                <td data-label={t('form.nameAr')}>{d.name_ar}</td>
+                <td data-label={t('form.nameEn')}>{d.name_en}</td>
+                <td data-label=""><button type="button" className="btn-small" onClick={() => remove(`/departments/${d.id}`)}>{t('common.delete')}</button></td>
               </tr>
             ))}
           </tbody>
@@ -157,14 +159,16 @@ export default function AdminCatalog() {
           </div>
         ) : (
         <div className="table-wrap">
-          <table className="table">
+          <table className="table table-cards">
             <thead><tr><th>{t('col.code')}</th><th>{t('col.course')}</th><th>{t('col.credits')}</th><th>{t('col.prereq')}</th><th /></tr></thead>
             <tbody>
               {courses.data.map((c) => (
                 <tr key={c.id}>
-                  <td><strong>{c.code}</strong></td><td>{pick(c.name_ar, c.name_en)}</td><td>{c.credit_hours}</td>
-                  <td>{c.prerequisites.map((p) => p.code).join(', ') || '—'}</td>
-                  <td className="actions">
+                  <td className="card-title" data-label={t('col.code')}><strong>{c.code}</strong></td>
+                  <td data-label={t('col.course')}>{pick(c.name_ar, c.name_en)}</td>
+                  <td data-label={t('col.credits')}>{c.credit_hours}</td>
+                  <td data-label={t('col.prereq')}>{c.prerequisites.map((p) => p.code).join(', ') || '—'}</td>
+                  <td data-label="" className="actions">
                     <button className="b b-ghost" onClick={() => editCourse(c)}>{t('common.edit')}</button>
                     <button type="button" className="btn-small" onClick={() => remove(`/courses/${c.id}`)}>{t('common.delete')}</button>
                   </td>

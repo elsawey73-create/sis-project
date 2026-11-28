@@ -106,15 +106,15 @@ export default function AdminOfferings() {
           </div>
         ) : (
         <div className="table-wrap">
-        <table className="table">
+        <table className="table table-cards">
           <thead><tr><th>{t('col.semester')}</th><th>{t('sem.regWindow')}</th><th /></tr></thead>
           <tbody>
-            {sems.data.length === 0 && <tr><td colSpan={3} className="muted">{t('reg.none')}</td></tr>}
+            {sems.data.length === 0 && <tr className="empty-row"><td colSpan={3} className="muted">{t('reg.none')}</td></tr>}
             {sems.data.map((s) => (
               <tr key={s.id}>
-                <td>{pick(s.name_ar, s.name_en)} {s.is_current ? <Tag kind="ok">{t('sem.current')}</Tag> : null}</td>
-                <td className="small">{s.registration_start} → {s.registration_end} <Tag kind={s.registration_open ? 'ok' : 'muted'}>{s.registration_open ? t('reg.open') : t('reg.closed')}</Tag></td>
-                <td><button className="b b-ghost" onClick={() => { setSemEdit(s.id); setSem({ ...s, is_current: !!s.is_current }); }}>{t('common.edit')}</button></td>
+                <td className="card-title" data-label={t('col.semester')}>{pick(s.name_ar, s.name_en)} {s.is_current ? <Tag kind="ok">{t('sem.current')}</Tag> : null}</td>
+                <td className="small" data-label={t('sem.regWindow')}>{s.registration_start} → {s.registration_end} <Tag kind={s.registration_open ? 'ok' : 'muted'}>{s.registration_open ? t('reg.open') : t('reg.closed')}</Tag></td>
+                <td data-label=""><button className="b b-ghost" onClick={() => { setSemEdit(s.id); setSem({ ...s, is_current: !!s.is_current }); }}>{t('common.edit')}</button></td>
               </tr>
             ))}
           </tbody>
@@ -198,17 +198,19 @@ export default function AdminOfferings() {
             </div>
           ) : (
           <div className="table-wrap">
-            <table className="table">
+            <table className="table table-cards">
               <thead><tr><th>{t('col.code')}</th><th>{t('col.course')}</th><th>{t('off.section')}</th><th>{t('col.instructor')}</th><th>{t('col.schedule')}</th><th>{t('col.seats')}</th><th /></tr></thead>
               <tbody>
-                {list.length === 0 && <tr><td colSpan={7} className="muted">{t('reg.none')}</td></tr>}
+                {list.length === 0 && <tr className="empty-row"><td colSpan={7} className="muted">{t('reg.none')}</td></tr>}
                 {list.map((o) => (
                   <tr key={o.id}>
-                    <td><strong>{o.code}</strong></td><td>{pick(o.name_ar, o.name_en)}</td><td>{o.section}</td>
-                    <td>{pick(o.instructor_ar, o.instructor_en)}</td>
-                    <td className="small">{o.meetings.map((m) => `${t('day.' + m.day_of_week)} ${hhmm(m.start_time)}–${hhmm(m.end_time)} (${m.room})`).join(' | ')}</td>
-                    <td>{o.enrolled_count}/{o.capacity}</td>
-                    <td className="actions">
+                    <td className="card-title" data-label={t('col.code')}><strong>{o.code}</strong></td>
+                    <td data-label={t('col.course')}>{pick(o.name_ar, o.name_en)}</td>
+                    <td data-label={t('off.section')}>{o.section}</td>
+                    <td data-label={t('col.instructor')}>{pick(o.instructor_ar, o.instructor_en)}</td>
+                    <td className="small" data-label={t('col.schedule')}>{o.meetings.map((m) => `${t('day.' + m.day_of_week)} ${hhmm(m.start_time)}–${hhmm(m.end_time)} (${m.room})`).join(' | ')}</td>
+                    <td data-label={t('col.seats')}>{o.enrolled_count}/{o.capacity}</td>
+                    <td data-label="" className="actions">
                       <button className="b b-ghost" onClick={() => editOff(o)}>{t('common.edit')}</button>
                       <button type="button" className="btn-small" onClick={() => removeOffering(o.id)}>{t('common.delete')}</button>
                     </td>

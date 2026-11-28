@@ -83,3 +83,41 @@ export function Meter({ value, label }) {
     </div>
   );
 }
+
+export function EmptyState({ title, children }) {
+  return (
+    <div className="empty-state">
+      <p className="empty-title">{title}</p>
+      {children ? <p className="muted small m0">{children}</p> : null}
+    </div>
+  );
+}
+
+// One table on wide screens, one card per row on small screens.
+// The first column is the card title. Later columns use their header as a label.
+export function DataTable({ columns, rows, rowKey, empty, rowClass }) {
+  return (
+    <div className="table-wrap">
+      <table className="table table-cards">
+        <thead>
+          <tr>
+            {columns.map((column) => <th key={column.key}>{column.label}</th>)}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.length === 0 ? (
+            <tr className="empty-row"><td colSpan={columns.length}><EmptyState title={empty} /></td></tr>
+          ) : rows.map((row) => (
+            <tr key={rowKey(row)} className={rowClass ? rowClass(row) : undefined}>
+              {columns.map((column, index) => (
+                <td key={column.key} data-label={column.label} className={index === 0 ? 'card-title' : undefined}>
+                  {column.render(row)}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}

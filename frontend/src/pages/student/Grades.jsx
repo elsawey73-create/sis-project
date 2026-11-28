@@ -4,7 +4,7 @@ import { useLanguage } from '../../context/LanguageContext';
 import { useFeedback } from '../../context/FeedbackContext';
 import useFetch from '../../hooks/useFetch';
 import { useCachedFetch } from '../../utils/offlineCache';
-import { Alert, LoadError, Loading, Tag } from '../../components/ui';
+import { Alert, DataTable, EmptyState, LoadError, Loading, Tag } from '../../components/ui';
 import { downloadFile } from '../../utils/download';
 import { errorText } from '../../utils/format';
 import { isNativeApp } from '../../native/platform';
@@ -37,7 +37,7 @@ export default function Grades() {
     return (
       <div className="card">
         {offline && <Alert type="info">{t('offline.banner')}</Alert>}
-        <p className="muted">{t('grades.none')}</p>
+        <EmptyState title={t('grades.none')} />
         <Evaluations />
       </div>
     );
@@ -52,29 +52,20 @@ export default function Grades() {
       {groups.map((g) => (
     <div className="card gap-bottom" key={g.id}>
       <h3 className="m0">{pick(g.ar, g.en)}</h3>
-      <div className="table-wrap">
-        <table className="table">
-          <thead>
-            <tr>
-              <th>{t('col.course')}</th><th>{t('grade.coursework')}</th><th>{t('grade.midterm')}</th>
-              <th>{t('grade.practical')}</th><th>{t('grade.final')}</th><th>{t('grade.total')}</th><th>{t('grade.letter')}</th>
-            </tr>
-          </thead>
-          <tbody>
-            {g.rows.map((r) => (
-              <tr key={r.enrollment_id} className={r.replaced ? 'replaced' : undefined}>
-                <td><strong>{r.code}</strong> {pick(r.name_ar, r.name_en)} {r.replaced && <Tag kind="muted">{t('grade.replaced')}</Tag>}</td>
-                <td>{r.coursework}/{r.max.coursework}</td>
-                <td>{r.midterm}/{r.max.midterm}</td>
-                <td>{r.has_practical ? `${r.practical}/${r.max.practical}` : '—'}</td>
-                <td>{r.final_exam}/{r.max.final_exam}</td>
-                <td><strong>{r.total}</strong></td>
-                <td><span className={`tag ${r.points > 0 ? 'tag-ok' : 'tag-err'}`}>{r.letter}</span></td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <DataTable
+        rowKey={(r) => r.enrollment_id}
+        rowClass={(r) => (r.replaced ? 'replaced' : undefined)}
+        columns={[
+          { key: 'course', label: t('col.course'), render: (r) => <>{r.code} {pick(r.name_ar, r.name_en)} {r.replaced && <Tag kind="muted">{t('grade.replaced')}</Tag>}</> },
+          { key: 'cw', label: t('grade.coursework'), render: (r) => `${r.coursework}/${r.max.coursework}` },
+          { key: 'mid', label: t('grade.midterm'), render: (r) => `${r.midterm}/${r.max.midterm}` },
+          { key: 'prac', label: t('grade.practical'), render: (r) => (r.has_practical ? `${r.practical}/${r.max.practical}` : '—') },
+          { key: 'final', label: t('grade.final'), render: (r) => `${r.final_exam}/${r.max.final_exam}` },
+          { key: 'total', label: t('grade.total'), render: (r) => <strong>{r.total}</strong> },
+          { key: 'letter', label: t('grade.letter'), render: (r) => <span className={`tag ${r.points > 0 ? 'tag-ok' : 'tag-err'}`}>{r.letter}</span> },
+        ]}
+        rows={g.rows}
+      />
     </div>
       ))}
       <Evaluations />

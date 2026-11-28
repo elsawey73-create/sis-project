@@ -1,7 +1,7 @@
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
 import Brand from '../../components/Brand';
-import { LoadError, Loading, Tag } from '../../components/ui';
+import { DataTable, EmptyState, LoadError, Loading, Tag } from '../../components/ui';
 import { downloadFile } from '../../utils/download';
 import { isNativeApp } from '../../native/platform';
 import { TranscriptNative } from '../../native/views';
@@ -36,25 +36,23 @@ export default function Transcript() {
         <div><span className="muted">{t('transcript.level')}:</span> {s.level} · {s.admission_year}</div>
       </div>
 
-      {semesters.length === 0 && <p className="muted">{t('grades.none')}</p>}
+      {semesters.length === 0 && <EmptyState title={t('grades.none')} />}
       {semesters.map((sem) => (
         <div key={sem.id} className="gap-top avoid-break">
           <h3 className="m0">{pick(sem.name_ar, sem.name_en)}</h3>
-          <div className="table-wrap">
-            <table className="table">
-              <thead><tr><th>{t('col.code')}</th><th>{t('col.course')}</th><th>{t('col.credits')}</th><th>{t('grade.total')}</th><th>{t('grade.letter')}</th><th>{t('grade.points')}</th></tr></thead>
-              <tbody>
-                {sem.courses.map((c) => (
-                  <tr key={c.enrollment_id} className={c.replaced ? 'replaced' : undefined}>
-                    <td><strong>{c.code}</strong></td>
-                    <td>{pick(c.name_ar, c.name_en)} {c.replaced && <Tag kind="muted">{t('grade.replaced')}</Tag>}</td>
-                    <td>{c.credit_hours}</td>
-                    <td>{c.total}</td><td>{c.letter}</td><td>{Number(c.points).toFixed(1)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataTable
+            rowKey={(c) => c.enrollment_id}
+            rowClass={(c) => (c.replaced ? 'replaced' : undefined)}
+            rows={sem.courses}
+            columns={[
+              { key: 'code', label: t('col.code'), render: (c) => <strong>{c.code}</strong> },
+              { key: 'course', label: t('col.course'), render: (c) => <>{pick(c.name_ar, c.name_en)} {c.replaced && <Tag kind="muted">{t('grade.replaced')}</Tag>}</> },
+              { key: 'credits', label: t('col.credits'), render: (c) => c.credit_hours },
+              { key: 'total', label: t('grade.total'), render: (c) => c.total },
+              { key: 'letter', label: t('grade.letter'), render: (c) => c.letter },
+              { key: 'points', label: t('grade.points'), render: (c) => Number(c.points).toFixed(1) },
+            ]}
+          />
           <p className="small">
             {t('transcript.semGpa')}: <strong>{sem.gpa?.toFixed(2)}</strong> · {t('transcript.attempted')}: {sem.credits_attempted} · {t('transcript.earned')}: {sem.credits_earned}
           </p>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useLanguage } from '../../context/LanguageContext';
-import { Alert, Loading } from '../../components/ui';
+import { Alert, EmptyState, Loading } from '../../components/ui';
 import FaceCapture from '../../components/FaceCapture';
 import { isNativeApp, openScanner } from '../../native/platform';
 import { submitAttendance } from '../../utils/attendanceScan';
@@ -29,14 +29,24 @@ export default function Attend() {
   return (
     <div className="card center-card">
       <h2 className="m0">{t('nav.attendance')}</h2>
-      {state.status === 'none' && <Alert type="info">{isNativeApp() ? t('att.howtoApp') : t('att.howto')}</Alert>}
+      <div className="scan-steps" aria-hidden="true">
+        <span className={`scan-step${state.status === 'none' || state.status === 'capture' ? ' is-on' : ''}`}>{t('att.stepPhoto')}</span>
+        <span className={`scan-step${state.status === 'loading' ? ' is-on' : ''}`}>{t('att.stepPlace')}</span>
+        <span className={`scan-step${state.status === 'ok' || state.status === 'already' ? ' is-on' : ''}`}>{t('att.stepDone')}</span>
+      </div>
+      {state.status === 'none' && <EmptyState title={isNativeApp() ? t('att.howtoApp') : t('att.howto')} />}
       {state.status === 'capture' && (
         <>
           <p className="muted">{t('att.faceHint')}</p>
           <FaceCapture onCapture={onCapture} />
         </>
       )}
-      {state.status === 'loading' && <Loading />}
+      {state.status === 'loading' && (
+        <>
+          <p className="muted center-text">{t('att.saving')}</p>
+          <Loading />
+        </>
+      )}
       {isNativeApp() && state.status !== 'loading' && state.status !== 'capture' && (
         <button type="button" className="b b-primary" onClick={openScanner}>{t('nav.scan')}</button>
       )}

@@ -112,7 +112,7 @@ export default function DoctorHome() {
               <tbody>
                 {stats.data.courses.map((course) => (
                   <tr key={course.id}>
-                    <td data-label={t('col.course')}><strong>{course.code}</strong> {pick(course.name_ar, course.name_en)}</td>
+                    <td className="card-title" data-label={t('col.course')}><strong>{course.code}</strong> {pick(course.name_ar, course.name_en)}</td>
                     <td data-label={t('att.attendancePct')}>{course.attendance_pct == null ? '—' : `${course.attendance_pct}%`}</td>
                     <td data-label={t('att.absent')}>{course.absent}</td>
                     <td data-label={t('grade.total')}>{course.average_grade ?? '—'}</td>
@@ -135,14 +135,14 @@ export default function DoctorHome() {
         <h3 className="m0">{t('home.openSessions')}</h3>
         {open.length === 0 ? <p className="muted">{t('home.noneOpen')}</p> : (
           <div className="table-wrap">
-            <table className="table">
+            <table className="table table-cards">
               <thead><tr><th>{t('col.code')}</th><th>{t('col.course')}</th><th /></tr></thead>
               <tbody>
                 {open.map((o) => (
                   <tr key={o.id}>
-                    <td><strong>{o.code}</strong></td>
-                    <td>{pick(o.name_ar, o.name_en)} <Tag kind="ok">{t('att.live')}</Tag></td>
-                    <td className="actions">
+                    <td className="card-title" data-label={t('col.code')}><strong>{o.code}</strong></td>
+                    <td data-label={t('col.course')}>{pick(o.name_ar, o.name_en)} <Tag kind="ok">{t('att.live')}</Tag></td>
+                    <td data-label="" className="actions">
                       <button className="b b-primary" disabled={starting} onClick={() => startAttendance(o)}>{t('doc.continueAtt')}</button>
                     </td>
                   </tr>
@@ -157,15 +157,15 @@ export default function DoctorHome() {
         <h3 className="m0">{t('home.pendingGrades')}</h3>
         {pending.length === 0 ? <p className="muted">{t('home.nonePending')}</p> : (
           <div className="table-wrap">
-            <table className="table">
+            <table className="table table-cards">
               <thead><tr><th>{t('col.code')}</th><th>{t('col.course')}</th><th>{t('col.pending')}</th><th /></tr></thead>
               <tbody>
                 {pending.map((o) => (
                   <tr key={o.id}>
-                    <td><strong>{o.code}</strong></td>
-                    <td>{pick(o.name_ar, o.name_en)}</td>
-                    <td><Tag kind="warn">{o.pending_grades}</Tag></td>
-                    <td className="actions">
+                    <td className="card-title" data-label={t('col.code')}><strong>{o.code}</strong></td>
+                    <td data-label={t('col.course')}>{pick(o.name_ar, o.name_en)}</td>
+                    <td data-label={t('col.pending')}><Tag kind="warn">{o.pending_grades}</Tag></td>
+                    <td data-label="" className="actions">
                       <Link className="b b-ghost" to={`/doctor/offerings/${o.id}`}>{t('doc.gradesStudents')}</Link>
                     </td>
                   </tr>
@@ -179,18 +179,18 @@ export default function DoctorHome() {
       <div className="card gap-top">
         <h3 className="m0">{t('home.sections')}</h3>
         <div className="table-wrap gap-top">
-          <table className="table">
+          <table className="table table-cards">
             <thead><tr><th>{t('col.code')}</th><th>{t('col.course')}</th><th>{t('col.students')}</th><th>{t('col.pending')}</th><th>{t('col.schedule')}</th><th /></tr></thead>
             <tbody>
-              {data.length === 0 && <tr><td colSpan={6} className="muted">{t('reg.none')}</td></tr>}
+              {data.length === 0 && <tr className="empty-row"><td colSpan={6} className="muted">{t('reg.none')}</td></tr>}
               {data.map((o) => (
                 <tr key={o.id}>
-                  <td><strong>{o.code}</strong></td>
-                  <td>{pick(o.name_ar, o.name_en)}</td>
-                  <td>{o.enrolled_count}/{o.capacity}</td>
-                  <td>{Number(o.pending_grades) > 0 ? <Tag kind="warn">{o.pending_grades}</Tag> : 0}</td>
-                  <td className="small">{o.meetings.map((m) => `${t('day.' + m.day_of_week)} ${hhmm(m.start_time)}`).join(' | ')}</td>
-                  <td className="actions">
+                  <td className="card-title" data-label={t('col.code')}><strong>{o.code}</strong></td>
+                  <td data-label={t('col.course')}>{pick(o.name_ar, o.name_en)}</td>
+                  <td data-label={t('col.students')}>{o.enrolled_count}/{o.capacity}</td>
+                  <td data-label={t('col.pending')}>{Number(o.pending_grades) > 0 ? <Tag kind="warn">{o.pending_grades}</Tag> : 0}</td>
+                  <td className="small" data-label={t('col.schedule')}>{o.meetings.map((m) => `${t('day.' + m.day_of_week)} ${hhmm(m.start_time)}`).join(' | ')}</td>
+                  <td data-label="" className="actions">
                     <Link className="b b-ghost" to={`/doctor/offerings/${o.id}`}>{t('doc.gradesStudents')}</Link>
                     <button className="b b-primary" disabled={starting} onClick={() => startAttendance(o)}>
                       {o.open_session_id ? t('doc.continueAtt') : t('att.startLecture')}

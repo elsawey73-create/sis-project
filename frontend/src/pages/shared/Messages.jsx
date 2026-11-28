@@ -4,7 +4,7 @@ import api from '../../api/axios';
 import { useAuth } from '../../context/AuthContext';
 import { useLanguage } from '../../context/LanguageContext';
 import useFetch from '../../hooks/useFetch';
-import { Alert, FetchBody, Field, LoadError } from '../../components/ui';
+import { Alert, EmptyState, FetchBody, Field, LoadError } from '../../components/ui';
 import { useFeedback } from '../../context/FeedbackContext';
 import { prefersReducedMotion } from '../../utils/motion';
 import { isNativeApp } from '../../native/platform';
@@ -70,36 +70,40 @@ export default function Messages() {
     finally { setSending(false); }
   }
 
-  const native = isNativeApp();
   const showThread = Boolean(id || composing);
+  const initial = (name) => (name || '?').trim().charAt(0).toUpperCase();
 
   return (
-    <div className={native ? `msg-layout native-msgs${showThread ? ' is-thread' : ' is-list'}` : 'msg-layout'}>
+    <div className={`msg-layout${showThread ? ' is-thread' : ''}${isNativeApp() ? ' native-msgs' : ''}`}>
       <div className="card msg-list">
         <button className="b b-primary full" onClick={() => { setComposing(true); navigate('/messages'); }}>✉️ {t('msg.new')}</button>
-        <input className="gap-top" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('msg.search')} aria-label={t('msg.search')} />
+        <input className="msg-search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('msg.search')} aria-label={t('msg.search')} />
         <FetchBody loading={threads.loading} error={threads.error} data={threads.data} onRetry={threads.reload}>
           {(list) => (
-            <>
-        {list.length === 0 && <p className="muted">{t('msg.none')}</p>}
-        {list.map((th) => (
-          <div key={th.id} className={`thread ${String(th.id) === id ? 'active' : ''}`} onClick={() => { setComposing(false); navigate(`/messages/${th.id}`); }}>
-            <div className="row between">
-              <strong>{pick(th.other_ar, th.other_en)}</strong>
-              {th.unread > 0 && <span className="count">{th.unread}</span>}
+            <div className="msg-threads">
+        {list.length === 0 && <EmptyState title={t('msg.none')} />}
+        {list.map((th) => {
+          const name = pick(th.other_ar, th.other_en);
+          return (
+          <div key={th.id} className={`thread ${String(th.id) === id ? 'active' : ''} ${th.unread > 0 ? 'is-unread' : ''}`} onClick={() => { setComposing(false); navigate(`/messages/${th.id}`); }}>
+            <span className="thread-avatar" aria-hidden="true">{initial(name)}</span>
+            <div className="thread-meta">
+              <strong>{name}</strong>
+              <div className="small">{th.subject}{th.course_code ? ` · ${th.course_code}` : ''}</div>
+              <div className="small muted ellipsis">{th.last_body}</div>
             </div>
-            <div className="small">{th.subject}{th.course_code ? ` · ${th.course_code}` : ''}</div>
-            <div className="small muted ellipsis">{th.last_body}</div>
+            {th.unread > 0 && <span className="count">{th.unread}</span>}
           </div>
-        ))}
-            </>
+          );
+        })}
+            </div>
           )}
         </FetchBody>
       </div>
 
       <div className="card msg-view" key={composing ? 'new' : (id || 'none')}>
-        {native && showThread && (
-          <button type="button" className="b b-ghost gap-bottom" onClick={() => { setComposing(false); navigate('/messages'); }}>{t('native.back')}</button>
+        {showThread && (
+          <button type="button" className="b b-ghost msg-back gap-bottom" onClick={() => { setComposing(false); navigate('/messages'); }}>{t('native.back')}</button>
         )}
         <Alert>{error}</Alert>
         {composing && contacts.error && <LoadError error={contacts.error} onRetry={contacts.reload} />}
@@ -120,7 +124,7 @@ export default function Messages() {
           </form>
         )}
 
-        {!composing && !id && <p className="muted">{t('msg.select')}</p>}
+        {!composing && !id && <EmptyState title={t('msg.select')} />}
 
         {!composing && id && (
           <FetchBody loading={thread.loading} error={thread.error} data={thread.data} onRetry={thread.reload}>

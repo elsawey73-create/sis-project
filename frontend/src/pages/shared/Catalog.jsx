@@ -45,18 +45,18 @@ export default function Catalog() {
       <FetchBody loading={courses.loading} error={courses.error} data={courses.data} onRetry={courses.reload}>
         {(list) => (
         <div className="table-wrap">
-          <table className="table">
+          <table className="table table-cards">
             <thead><tr><th>{t('col.code')}</th><th>{t('col.course')}</th><th>{t('col.department')}</th><th>{t('col.credits')}</th><th>{t('col.prereq')}</th></tr></thead>
             <tbody>
-              {list.length === 0 && <tr><td colSpan={5} className="muted">{t('reg.none')}</td></tr>}
+              {list.length === 0 && <tr className="empty-row"><td colSpan={5} className="muted">{t('reg.none')}</td></tr>}
               {list.map((c) => (
                 <Fragment key={c.id}>
                   <tr className="clickable" onClick={() => setOpen(open === c.id ? null : c.id)}>
-                    <td><strong>{c.code}</strong></td>
-                    <td>{pick(c.name_ar, c.name_en)}</td>
-                    <td>{pick(c.department_ar, c.department_en)}</td>
-                    <td>{c.credit_hours}{c.has_practical ? <Tag kind="info">{t('catalog.practical')}</Tag> : null}</td>
-                    <td>{c.prerequisites.length ? c.prerequisites.map((p) => p.code).join(', ') : '—'}</td>
+                    <td className="card-title" data-label={t('col.code')}><strong>{c.code}</strong></td>
+                    <td data-label={t('col.course')}>{pick(c.name_ar, c.name_en)}</td>
+                    <td data-label={t('col.department')}>{pick(c.department_ar, c.department_en)}</td>
+                    <td data-label={t('col.credits')}>{c.credit_hours}{c.has_practical ? <Tag kind="info">{t('catalog.practical')}</Tag> : null}</td>
+                    <td data-label={t('col.prereq')}>{c.prerequisites.length ? c.prerequisites.map((p) => p.code).join(', ') : '—'}</td>
                   </tr>
                   {open === c.id && (
                     <tr>
