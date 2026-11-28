@@ -40,6 +40,22 @@ async function hasColumn(conn, table, column) {
   return rows.length > 0;
 }
 
+async function addColumn(conn, table, column, definition) {
+  if (!(await hasTable(conn, table))) return;
+  if (await hasColumn(conn, table, column)) return;
+  await conn.query(`ALTER TABLE \`${table}\` ADD COLUMN \`${column}\` ${definition}`);
+  console.log(`Added ${table}.${column}`);
+}
+
+async function hasIndex(conn, table, indexName) {
+  const [rows] = await conn.query(
+    `SELECT 1 FROM information_schema.STATISTICS
+     WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ? LIMIT 1`,
+    [table, indexName]
+  );
+  return rows.length > 0;
+}
+
 async function applied(conn, id) {
   const [rows] = await conn.query('SELECT id FROM schema_migrations WHERE id = ?', [id]);
   return rows.length > 0;
@@ -75,6 +91,29 @@ async function patchExisting(conn) {
       'UPDATE attendance_sessions SET late_after_minutes = 15 WHERE late_after_minutes IS NULL'
     );
     await conn.query('ALTER TABLE attendance_sessions MODIFY late_after_minutes INT NOT NULL DEFAULT 15');
+  }
+}
+
+// Columns added after the first release. Each check is safe to repeat.
+async function patchFeatures(conn) {
+  await addColumn(conn, 'course_offerings', 'absence_limit_pct', 'INT NULL');
+  await addColumn(conn, 'attendance_sessions', 'latitude', 'DECIMAL(9,6) NULL');
+  await addColumn(conn, 'attendance_sessions', 'longitude', 'DECIMAL(9,6) NULL');
+  await addColumn(conn, 'attendance_sessions', 'accuracy_m', 'DECIMAL(8,1) NULL');
+  await addColumn(conn, 'attendance_sessions', 'radius_m', 'INT NULL');
+  await addColumn(conn, 'attendance_sessions', 'auto_close_at', 'DATETIME NULL');
+  await addColumn(conn, 'attendance_records', 'photo', 'MEDIUMBLOB NULL');
+  await addColumn(conn, 'attendance_records', 'photo_mime', 'VARCHAR(40) NULL');
+  await addColumn(conn, 'attendance_records', 'latitude', 'DECIMAL(9,6) NULL');
+  await addColumn(conn, 'attendance_records', 'longitude', 'DECIMAL(9,6) NULL');
+  await addColumn(conn, 'attendance_records', 'accuracy_m', 'DECIMAL(8,1) NULL');
+  await addColumn(conn, 'attendance_records', 'distance_m', 'DECIMAL(8,1) NULL');
+  await addColumn(conn, 'attendance_records', 'device_id', 'VARCHAR(128) NULL');
+  await addColumn(conn, 'attendance_records', 'device_signals', 'VARCHAR(128) NULL');
+  await addColumn(conn, 'attendance_records', 'marked_by', 'INT NULL');
+  if (await hasTable(conn, 'attendance_records') && !(await hasIndex(conn, 'attendance_records', 'idx_records_device'))) {
+    await conn.query('ALTER TABLE attendance_records ADD KEY idx_records_device (session_id, device_id)');
+    console.log('Added attendance_records.idx_records_device');
   }
 }
 
@@ -119,6 +158,7 @@ async function patchExisting(conn) {
   }
 
   await patchExisting(conn);
+  await patchFeatures(conn);
   await mark(conn, '002_token_and_attendance_defaults');
 
   const sqlDir = path.join(__dirname, '..', 'sql');

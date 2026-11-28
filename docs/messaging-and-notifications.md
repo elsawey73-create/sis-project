@@ -2,7 +2,7 @@
 
 ## Overview
 
-Students and instructors can message each other when they share an enrollment that is not dropped. Admins have no message routes. Notifications are rows in `notifications`, written when a message is sent and when grades are published. The navbar polls unread counts.
+Students and instructors can message each other when they share an enrollment that is not dropped. Admins have no message routes. Notifications are rows in `notifications`. Writers include grades, messages, absences, announcements, exam reminders, and registration open. Each user can turn a type off in `notification_preferences`. The navbar polls unread counts. `GET /api/messages/threads?q=` filters by subject, the other person's name, or course code. `POST /api/notifications/:id/read` marks one row. The bell still uses `GET /api/notifications/summary`.
 
 ## Purpose and responsibilities
 

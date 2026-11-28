@@ -74,3 +74,12 @@ export function Field({ label, children }) {
 export function Tag({ kind = 'muted', children }) {
   return <span className={`tag tag-${kind}`}>{children}</span>;
 }
+
+export function Meter({ value, label }) {
+  const pct = Math.max(0, Math.min(100, Number(value) || 0));
+  return (
+    <div className="meter" role="progressbar" aria-valuenow={pct} aria-valuemin={0} aria-valuemax={100} aria-label={label}>
+      <span style={{ width: `${pct}%` }} />
+    </div>
+  );
+}

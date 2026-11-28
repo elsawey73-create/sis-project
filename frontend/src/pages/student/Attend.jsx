@@ -1,42 +1,43 @@
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
-import api from '../../api/axios';
 import { useLanguage } from '../../context/LanguageContext';
 import { Alert, Loading } from '../../components/ui';
+import FaceCapture from '../../components/FaceCapture';
 import { isNativeApp, openScanner } from '../../native/platform';
+import { submitAttendance } from '../../utils/attendanceScan';
 import { errorText } from '../../utils/format';
 
 // Page opened by the QR code: /attend?s=<session>&t=<token>
 export default function Attend() {
   const { t, pick } = useLanguage();
   const [params] = useSearchParams();
-  const [state, setState] = useState({ status: 'loading' });
-  const started = useRef(false);
+  const sessionId = params.get('s');
+  const token = params.get('t');
+  const [state, setState] = useState({ status: sessionId && token ? 'capture' : 'none' });
 
-  useEffect(() => {
-    if (started.current) return;
-    started.current = true;
-    const s = params.get('s');
-    const token = params.get('t');
-    if (!s || !token) { setState({ status: 'none' }); return; }
-    api.post('/attendance/scan', { session_id: Number(s), token })
-      .then((r) => setState((prev) => (prev.status === 'ok' ? prev : { status: 'ok', data: r.data })))
-      .catch((e) => {
-        setState((prev) => {
-          if (prev.status === 'ok') return prev;
-          if (e.response?.data?.error === 'ALREADY_RECORDED') return { status: 'already' };
-          if (prev.status === 'already') return prev;
-          return { status: 'error', text: errorText(e, t) };
-        });
-      });
-  }, [params, t]);
+  async function onCapture(photo) {
+    setState({ status: 'loading' });
+    try {
+      const response = await submitAttendance({ sessionId, token, photo });
+      setState({ status: 'ok', data: response.data });
+    } catch (error) {
+      if (error.response?.data?.error === 'ALREADY_RECORDED') setState({ status: 'already' });
+      else setState({ status: 'error', text: errorText(error, t) });
+    }
+  }
 
   return (
     <div className="card center-card">
       <h2 className="m0">{t('nav.attendance')}</h2>
-      {state.status === 'loading' && <Loading />}
       {state.status === 'none' && <Alert type="info">{isNativeApp() ? t('att.howtoApp') : t('att.howto')}</Alert>}
-      {isNativeApp() && state.status !== 'loading' && (
+      {state.status === 'capture' && (
+        <>
+          <p className="muted">{t('att.faceHint')}</p>
+          <FaceCapture onCapture={onCapture} />
+        </>
+      )}
+      {state.status === 'loading' && <Loading />}
+      {isNativeApp() && state.status !== 'loading' && state.status !== 'capture' && (
         <button type="button" className="b b-primary" onClick={openScanner}>{t('nav.scan')}</button>
       )}
       {state.status === 'error' && <Alert type="error">{state.text}</Alert>}

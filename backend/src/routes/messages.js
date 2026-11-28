@@ -3,7 +3,8 @@ const db = require('../config/db');
 const { authenticate, authorize } = require('../middleware/auth');
 const { HttpError } = require('../utils/errors');
 const { withTx } = require('../utils/tx');
-const { notify } = require('../services/notify');
+const { notify, notifyOnce, PREFERENCE_TYPES } = require('../services/notify');
+const { runScheduledJobs } = require('../services/scheduler');
 
 const messages = express.Router();
 const notifications = express.Router();
@@ -31,6 +32,12 @@ messages.get('/contacts', who, async (req, res) => res.json(await contactsFor(re
 
 messages.get('/threads', who, async (req, res) => {
   const me = req.user.id;
+  const q = String(req.query.q || '').trim();
+  const like = `%${q}%`;
+  const searchSql = q
+    ? `AND (t.subject LIKE ? OR ou.full_name_ar LIKE ? OR ou.full_name_en LIKE ? OR c.code LIKE ?)`
+    : '';
+  const searchParams = q ? [like, like, like, like] : [];
   const [roots] = await db.query(
     `SELECT t.id, t.subject, t.offering_id, t.sender_id, c.code AS course_code,
             ou.id AS other_id, ou.full_name_ar AS other_ar, ou.full_name_en AS other_en, ou.role AS other_role
@@ -38,8 +45,8 @@ messages.get('/threads', who, async (req, res) => {
      JOIN users ou ON ou.id = IF(t.sender_id = ?, t.receiver_id, t.sender_id)
      LEFT JOIN course_offerings o ON o.id = t.offering_id
      LEFT JOIN courses c ON c.id = o.course_id
-     WHERE t.parent_id IS NULL AND (t.sender_id = ? OR t.receiver_id = ?)`,
-    [me, me, me]
+     WHERE t.parent_id IS NULL AND (t.sender_id = ? OR t.receiver_id = ?) ${searchSql}`,
+    [me, me, me, ...searchParams]
   );
   if (!roots.length) return res.json([]);
   const ids = roots.map((r) => r.id);
@@ -135,6 +142,20 @@ messages.post('/threads/:id/reply', who, async (req, res) => {
   res.status(201).json({ ok: true });
 });
 
+async function ensureRegistrationNotice(user) {
+  if (user.role !== 'student') return;
+  const [[sem]] = await db.query(
+    `SELECT id, name_ar, name_en FROM semesters
+     WHERE is_current = 1 AND CURDATE() BETWEEN registration_start AND registration_end LIMIT 1`
+  );
+  if (!sem) return;
+  await notifyOnce(db, user.id, 'registration_open', `reg-open-${sem.id}`, {
+    semester_id: sem.id,
+    semester_ar: sem.name_ar,
+    semester_en: sem.name_en,
+  });
+}
+
 // ---------- Notifications ----------
 notifications.get('/', authenticate, async (req, res) => {
   const [rows] = await db.query('SELECT id, type, data, is_read, created_at FROM notifications WHERE user_id = ? ORDER BY id DESC LIMIT 50', [req.user.id]);
@@ -143,6 +164,8 @@ notifications.get('/', authenticate, async (req, res) => {
 });
 
 notifications.get('/summary', authenticate, async (req, res) => {
+  await ensureRegistrationNotice(req.user).catch((err) => console.error('registration notice failed:', err.message));
+  runScheduledJobs().catch((err) => console.error('scheduled jobs failed:', err.message));
   const [[n]] = await db.query('SELECT COUNT(*) AS c FROM notifications WHERE user_id = ? AND is_read = 0', [req.user.id]);
   const [[m]] = await db.query('SELECT COUNT(*) AS c FROM messages WHERE receiver_id = ? AND is_read = 0', [req.user.id]);
   res.json({ notifications: n.c, messages: m.c });
@@ -151,6 +174,39 @@ notifications.get('/summary', authenticate, async (req, res) => {
 notifications.post('/read-all', authenticate, async (req, res) => {
   await db.query('UPDATE notifications SET is_read = 1 WHERE user_id = ?', [req.user.id]);
   res.json({ ok: true });
+});
+
+notifications.post('/:id/read', authenticate, async (req, res) => {
+  await db.query('UPDATE notifications SET is_read = 1 WHERE id = ? AND user_id = ?', [req.params.id, req.user.id]);
+  res.json({ ok: true });
+});
+
+notifications.get('/preferences', authenticate, async (req, res) => {
+  const [rows] = await db.query(
+    'SELECT type, enabled FROM notification_preferences WHERE user_id = ?',
+    [req.user.id]
+  );
+  const saved = Object.fromEntries(rows.map((row) => [row.type, !!row.enabled]));
+  const preferences = {};
+  PREFERENCE_TYPES.forEach((type) => { preferences[type] = saved[type] !== false; });
+  res.json(preferences);
+});
+
+notifications.put('/preferences', authenticate, async (req, res) => {
+  const body = req.body || {};
+  for (const type of PREFERENCE_TYPES) {
+    if (body[type] == null) continue;
+    await db.query(
+      `INSERT INTO notification_preferences (user_id, type, enabled) VALUES (?,?,?)
+       ON DUPLICATE KEY UPDATE enabled = VALUES(enabled)`,
+      [req.user.id, type, body[type] ? 1 : 0]
+    );
+  }
+  const [rows] = await db.query('SELECT type, enabled FROM notification_preferences WHERE user_id = ?', [req.user.id]);
+  const saved = Object.fromEntries(rows.map((row) => [row.type, !!row.enabled]));
+  const preferences = {};
+  PREFERENCE_TYPES.forEach((type) => { preferences[type] = saved[type] !== false; });
+  res.json(preferences);
 });
 
 module.exports = { messages, notifications };

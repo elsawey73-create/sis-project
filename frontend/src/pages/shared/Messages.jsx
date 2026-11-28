@@ -15,7 +15,8 @@ export default function Messages() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { t, pick } = useLanguage();
-  const threads = useFetch('/messages/threads');
+  const [query, setQuery] = useState('');
+  const threads = useFetch(query.trim() ? `/messages/threads?q=${encodeURIComponent(query.trim())}` : '/messages/threads');
   const contacts = useFetch('/messages/contacts');
   const thread = useFetch(id ? `/messages/threads/${id}` : null);
   const [composing, setComposing] = useState(false);
@@ -76,6 +77,7 @@ export default function Messages() {
     <div className={native ? `msg-layout native-msgs${showThread ? ' is-thread' : ' is-list'}` : 'msg-layout'}>
       <div className="card msg-list">
         <button className="b b-primary full" onClick={() => { setComposing(true); navigate('/messages'); }}>✉️ {t('msg.new')}</button>
+        <input className="gap-top" value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('msg.search')} aria-label={t('msg.search')} />
         <FetchBody loading={threads.loading} error={threads.error} data={threads.data} onRetry={threads.reload}>
           {(list) => (
             <>

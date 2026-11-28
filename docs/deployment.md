@@ -81,7 +81,13 @@ npm install
 npm start
 ```
 
-`npm start` is `node src/server.js`. `npm run dev` is nodemon and is for local development. The process listens on `PORT` (default 5000) on the Express default address. The log line always says `localhost` even when the bind is all interfaces.
+`npm start` runs `node scripts/migrate.js && node src/server.js`. The migrate step is idempotent: it adds missing columns and applies any new `sql/NNN_*.sql` file that is not in `schema_migrations`. A Railway deploy that uses `npm start` applies `005_platform_features.sql` and the attendance columns on boot. `npm run dev` is nodemon on `src/server.js` only, so local development still runs `npm run db:init` when the schema changes. The process listens on `0.0.0.0:$PORT` (`PORT` defaults to 5000). The log line still says `localhost`.
+
+No new environment variables are required. Attendance radius, GPS accuracy cap, and the global absence limit live in `app_settings` and can be changed by an admin in the dashboard.
+
+Face photos are `MEDIUMBLOB` values on `attendance_records`, not files on the container disk. A redeploy does not delete them. There is no Railway volume for this.
+
+Exam reminders and lecture auto-close run inside the API process: a one-minute timer, and the same job when a client polls `GET /api/notifications/summary`. A reminder is created when an exam is between 1 and 2 days away. There is no separate cron service. JSON request bodies are accepted up to 2 MB so a compressed portrait can be posted with a scan.
 
 In production the process exits before it listens when any of these is true:
 

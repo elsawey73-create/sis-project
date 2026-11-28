@@ -48,6 +48,7 @@ There is no root `README`. `backend/sql/001_init.sql` is the schema. `npm run db
 | [Registration](registration.md) | Enroll and drop rules |
 | [Grades and transcript](grades-and-transcript.md) | Score scales, publish, GPA, credit cap |
 | [Attendance](attendance.md) | QR sessions, scan, manual marks, absence warning |
+| [Platform features](platform-features.md) | Photos, location, exports, calendar, evaluations, backup |
 | [Messaging and notifications](messaging-and-notifications.md) | Threads, contacts, unread counts |
 | [Admin](admin.md) | Stats, user creation, password reset |
 | [API reference](api-reference.md) | Every HTTP route, who may call it, and the response shape |

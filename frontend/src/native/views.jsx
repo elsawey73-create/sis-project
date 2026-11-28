@@ -71,7 +71,7 @@ function AttendanceCard({ row }) {
           <span className="native-code">{row.code}</span>
           <strong>{pick(row.name_ar, row.name_en)}</strong>
         </div>
-        {row.warning ? <Tag kind="err">{t('att.warning')}</Tag> : <Tag kind="ok">OK</Tag>}
+        {row.warning ? <Tag kind="err">{t('att.exceeded')}</Tag> : row.approaching ? <Tag kind="warn">{t('att.approaching')}</Tag> : <Tag kind="ok">OK</Tag>}
       </div>
       <div className="native-bar" aria-hidden="true"><span style={{ width: `${pct}%` }} /></div>
       <div className="native-score-grid">

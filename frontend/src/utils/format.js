@@ -12,6 +12,9 @@ export function errorText(err, t) {
   else if (det?.course) msg += ` (${det.course})`;
   else if (code === 'CREDIT_LIMIT') msg += ` (${det.current}/${det.max})`;
   else if (code === 'INVALID_GRADE') msg += ` (${det.field} ≤ ${det.max})`;
+  else if ((code === 'TOO_FAR' || code === 'GPS_INACCURATE') && det?.distance_m != null) {
+    msg += ` (${det.distance_m} m${det.radius_m != null ? ` / ${det.radius_m} m` : ''})`;
+  }
   return msg;
 }
 

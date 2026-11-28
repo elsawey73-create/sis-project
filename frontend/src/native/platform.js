@@ -26,6 +26,7 @@ const TITLES = [
   ['/admin/offerings', 'nav.offerings'],
   ['/admin/users', 'nav.users'],
   ['/admin', 'nav.dashboard'],
+  ['/calendar', 'nav.calendar'],
   ['/catalog', 'nav.catalog'],
   ['/messages', 'nav.messages'],
   ['/notifications', 'nav.notifications'],
