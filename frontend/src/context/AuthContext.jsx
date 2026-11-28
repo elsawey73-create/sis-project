@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import api, { storeSession, clearSession } from '../api/axios';
 import { useLanguage, readStoredLang } from './LanguageContext';
 
@@ -44,15 +44,19 @@ export function AuthProvider({ children }) {
     }
   }
 
-  async function logout() {
-    try {
-      await api.post('/auth/logout');
-    } catch {
-      /* Clear the local session even when the server rejects logout. */
-    }
+  // Clear local auth first so a slow network cannot leave the session on screen.
+  // The captured token still tells the server to invalidate that session.
+  const logout = useCallback(async () => {
+    const token = localStorage.getItem('token');
     clearSession();
     setUser(null);
-  }
+    if (!token) return;
+    try {
+      await api.post('/auth/logout', {}, { headers: { Authorization: `Bearer ${token}` } });
+    } catch {
+      /* The local session is already cleared. */
+    }
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout }}>

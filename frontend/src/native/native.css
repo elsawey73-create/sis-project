@@ -391,6 +391,8 @@ html.native-app .native-metric-value {
   color: var(--color-primary);
   line-height: 1.1;
 }
+html.native-app .native-metric-value.is-phrase { font-size: 20px; line-height: 1.3; }
+html.native-app .home-metrics .home-span { grid-column: 1 / -1; }
 html.native-app .native-metric-label { color: var(--color-text-secondary); font-size: 13px; }
 
 html.native-app .native-card {
