@@ -4,6 +4,8 @@ const { authenticate, authorize } = require('../middleware/auth');
 const { HttpError } = require('../utils/errors');
 const { getStanding, standingFromAttempts, maxCredits, maxes, isPassOnly } = require('../services/gpa');
 const { occupying } = require('../domain/enrollment');
+const { audit } = require('../services/audit');
+const { studentExportXlsx, transcriptPdf } = require('../services/exports');
 
 router.use(authenticate, authorize('student'));
 
@@ -49,14 +51,13 @@ router.get('/grades', async (req, res) => {
   res.json(rows);
 });
 
-// Full transcript: every semester, plus semester GPA and the cumulative GPA.
-router.get('/transcript', async (req, res) => {
+async function buildTranscript(userId) {
   const [[info]] = await db.query(
     `SELECT u.full_name_ar, u.full_name_en, st.student_code, st.level, st.admission_year,
             d.name_ar AS department_ar, d.name_en AS department_en
      FROM users u JOIN students st ON st.user_id = u.id JOIN departments d ON d.id = st.department_id
      WHERE u.id = ?`,
-    [req.user.id]
+    [userId]
   );
   if (!info) throw new HttpError(404, 'NOT_FOUND');
 
@@ -71,7 +72,7 @@ router.get('/transcript', async (req, res) => {
      JOIN grades g ON g.enrollment_id = e.id AND g.published = 1
      WHERE e.student_id = ? AND e.status IN ('completed','failed')
      ORDER BY s.start_date, c.code`,
-    [req.user.id]
+    [userId]
   );
 
   const repeat = standingFromAttempts(rows);
@@ -108,11 +109,120 @@ router.get('/transcript', async (req, res) => {
     s.credits_earned = s._e;
     delete s._q; delete s._a; delete s._e;
   });
-  res.json({
+  return {
     student: info,
     semesters,
     standing: { cgpa: repeat.cgpa, credits_attempted: repeat.credits_attempted, credits_earned: repeat.credits_earned },
+  };
+}
+
+// Full transcript: every semester, plus semester GPA and the cumulative GPA.
+router.get('/transcript', async (req, res) => {
+  res.json(await buildTranscript(req.user.id));
+});
+
+router.get('/transcript.pdf', async (req, res) => {
+  const payload = await buildTranscript(req.user.id);
+  const body = await transcriptPdf(payload);
+  res.set('Content-Disposition', 'attachment; filename="transcript.pdf"');
+  res.type('application/pdf');
+  res.send(Buffer.from(body));
+});
+
+router.get('/terms', async (req, res) => {
+  const [rows] = await db.query(
+    `SELECT DISTINCT sm.id, sm.name_ar, sm.name_en, sm.start_date, sm.end_date, sm.is_current
+     FROM enrollments e
+     JOIN course_offerings o ON o.id = e.offering_id
+     JOIN semesters sm ON sm.id = o.semester_id
+     WHERE e.student_id = ? AND e.status <> 'dropped'
+     ORDER BY sm.start_date DESC`,
+    [req.user.id]
+  );
+  res.json(rows);
+});
+
+router.get('/export.xlsx', async (req, res) => {
+  const transcript = await buildTranscript(req.user.id);
+  const grades = [];
+  transcript.semesters.forEach((semester) => {
+    semester.courses.forEach((course) => grades.push({
+      ...course,
+      semester_en: semester.name_en,
+      semester_ar: semester.name_ar,
+    }));
   });
+  const [attendance] = await db.query(
+    `SELECT sm.name_ar AS semester_ar, sm.name_en AS semester_en, c.code, c.name_ar, c.name_en,
+            s.session_date, s.status AS session_status, ar.status, ar.method, ar.distance_m
+     FROM enrollments e
+     JOIN course_offerings o ON o.id = e.offering_id
+     JOIN semesters sm ON sm.id = o.semester_id
+     JOIN courses c ON c.id = o.course_id
+     JOIN attendance_sessions s ON s.offering_id = o.id
+     LEFT JOIN attendance_records ar ON ar.session_id = s.id AND ar.student_id = e.student_id
+     WHERE e.student_id = ? AND ${occupying('e.status')}
+     ORDER BY s.session_date, c.code`,
+    [req.user.id]
+  );
+  const [meetings] = await db.query(
+    `SELECT c.code, c.name_en, c.name_ar, o.section, m.day_of_week, m.start_time, m.end_time, m.room, m.type
+     FROM enrollments e
+     JOIN course_offerings o ON o.id = e.offering_id
+     JOIN courses c ON c.id = o.course_id
+     LEFT JOIN offering_meetings m ON m.offering_id = o.id
+     WHERE e.student_id = ? AND ${occupying('e.status')}
+     ORDER BY c.code, m.day_of_week, m.start_time`,
+    [req.user.id]
+  );
+  const schedule = meetings.filter((row) => row.day_of_week).map((row) => [
+    row.code, row.name_en || row.name_ar, row.section, row.day_of_week,
+    String(row.start_time).slice(0, 5), String(row.end_time).slice(0, 5), row.room, row.type,
+  ]);
+  const body = await studentExportXlsx({ grades, attendance, schedule });
+  await audit(req.user.id, 'student.export', 'user', req.user.id, 'xlsx');
+  res.set('Content-Disposition', 'attachment; filename="unidex-record.xlsx"');
+  res.type('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+  res.send(Buffer.from(body));
+});
+
+router.get('/evaluations', async (req, res) => {
+  const [rows] = await db.query(
+    `SELECT o.id AS offering_id, c.code, c.name_ar, c.name_en, sm.name_ar AS semester_ar, sm.name_en AS semester_en,
+            ev.rating, ev.comment, ev.created_at
+     FROM enrollments e
+     JOIN course_offerings o ON o.id = e.offering_id
+     JOIN courses c ON c.id = o.course_id
+     JOIN semesters sm ON sm.id = o.semester_id
+     LEFT JOIN course_evaluations ev ON ev.offering_id = o.id AND ev.student_id = e.student_id
+     WHERE e.student_id = ? AND ${occupying('e.status')}
+       AND CURDATE() >= DATE_SUB(sm.end_date, INTERVAL 21 DAY)
+     ORDER BY sm.start_date DESC, c.code`,
+    [req.user.id]
+  );
+  res.json(rows);
+});
+
+router.post('/evaluations', async (req, res) => {
+  const offeringId = Number(req.body.offering_id);
+  const rating = Number(req.body.rating);
+  const comment = String(req.body.comment || '').trim().slice(0, 1000) || null;
+  if (!offeringId || !Number.isInteger(rating) || rating < 1 || rating > 5) throw new HttpError(400, 'MISSING_FIELDS');
+  const [[row]] = await db.query(
+    `SELECT o.id FROM enrollments e
+     JOIN course_offerings o ON o.id = e.offering_id
+     JOIN semesters sm ON sm.id = o.semester_id
+     WHERE e.student_id = ? AND o.id = ? AND ${occupying('e.status')}
+       AND CURDATE() >= DATE_SUB(sm.end_date, INTERVAL 21 DAY)`,
+    [req.user.id, offeringId]
+  );
+  if (!row) throw new HttpError(403, 'FORBIDDEN');
+  await db.query(
+    `INSERT INTO course_evaluations (offering_id, student_id, rating, comment) VALUES (?,?,?,?)
+     ON DUPLICATE KEY UPDATE rating = VALUES(rating), comment = VALUES(comment)`,
+    [offeringId, req.user.id, rating, comment]
+  );
+  res.json({ ok: true });
 });
 
 module.exports = router;

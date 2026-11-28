@@ -4,6 +4,7 @@ const { isProduction } = require('./config/env');
 const { authenticate, authorize } = require('./middleware/auth');
 const { HttpError } = require('./utils/errors');
 const { warnIfNoResendKey } = require('./services/mail');
+const { startSchedulers } = require('./services/scheduler');
 
 function assertRuntimeConfig() {
   if (!process.env.JWT_SECRET) {
@@ -44,7 +45,8 @@ warnIfNoResendKey();
 
 const app = express();
 app.use(corsMiddleware());
-app.use(express.json());
+// Face photos arrive as base64 JPEG on the scan body. 2mb covers a compressed portrait.
+app.use(express.json({ limit: '2mb' }));
 
 app.get('/api/health', (req, res) => res.json({ status: 'ok', app: 'Unidex' }));
 
@@ -55,6 +57,8 @@ app.use('/api/enrollments', require('./routes/enrollments'));
 app.use('/api/instructor', require('./routes/instructor'));
 app.use('/api/student', require('./routes/student'));
 app.use('/api/attendance', require('./routes/attendance'));
+app.use('/api/search', require('./routes/search'));
+app.use('/api/calendar', require('./routes/calendar'));
 const { messages, notifications } = require('./routes/messages');
 app.use('/api/messages', messages);
 app.use('/api/notifications', notifications);
@@ -74,4 +78,5 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Unidex API running on http://localhost:${PORT}`));
+app.listen(PORT, '0.0.0.0', () => console.log(`Unidex API running on http://localhost:${PORT}`));
+startSchedulers();

@@ -18,7 +18,18 @@ process.env.DB_PASSWORD = process.env.DB_PASSWORD === undefined ? '' : process.e
 process.env.DB_NAME = process.env.DB_NAME || 'unidex_db';
 
 const QR_FIELDS = ['session_id', 'class_id', 'doctor_id', 'qr_token', 'expires_at', 'created_at'];
-const QR_TTL_SECONDS = 15 * 60;
+const QR_TTL_SECONDS = 20;
+const TINY_JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xdb]), Buffer.alloc(48, 7)]).toString('base64');
+
+function scanBody(sessionId, token, extra = {}) {
+  return {
+    session_id: sessionId,
+    token,
+    device_id: extra.device_id || `dev-${sessionId}-primary`,
+    photo: TINY_JPEG,
+    ...extra,
+  };
+}
 
 function assert(condition, message) {
   if (!condition) {
@@ -176,11 +187,11 @@ async function call(base, method, apiPath, token, body) {
     assert(Number(created.class_id) === ids.off1, 'class_id is the offering');
     assert(Number(created.doctor_id) === ids.doctor, 'doctor_id is the instructor');
     assert(created.expired === false, 'new code is not expired');
-    assert(created.expires_in <= QR_TTL_SECONDS && created.expires_in >= QR_TTL_SECONDS - 5, `expires_in is about 15 minutes (${created.expires_in})`);
+    assert(created.expires_in <= QR_TTL_SECONDS && created.expires_in >= QR_TTL_SECONDS - 5, `expires_in is about 20 seconds (${created.expires_in})`);
     assert(created.qr_token.length <= 512, `qr_token fits the column (${created.qr_token.length})`);
 
     const payload = jwt.decode(created.qr_token);
-    assert(payload.exp - payload.iat === QR_TTL_SECONDS, 'JWT expires 15 minutes after it is issued');
+    assert(payload.exp - payload.iat === QR_TTL_SECONDS, 'JWT expires 20 seconds after it is issued');
     assert(Number(payload.sid) === Number(created.session_id), 'token sid matches the attendance session');
     assert(Number(payload.cid) === ids.off1, 'token carries the class id');
     assert(/^[a-f0-9]{32}$/.test(payload.rnd), 'token carries a random nonce');
@@ -190,7 +201,7 @@ async function call(base, method, apiPath, token, body) {
       'SELECT TIMESTAMPDIFF(SECOND, created_at, expires_at) AS span, session_id, class_id, doctor_id, qr_token, expires_at, created_at FROM qr_attendance_sessions WHERE qr_token = ?',
       [created.qr_token]
     );
-    assert(Number(span.span) === QR_TTL_SECONDS, `stored expiry is 15 minutes (${span.span})`);
+    assert(Number(span.span) === QR_TTL_SECONDS, `stored expiry is 20 seconds (${span.span})`);
     for (const field of QR_FIELDS) assert(span[field] !== null && span[field] !== '', `row stores ${field}`);
 
     const again = await call(base, 'POST', '/attendance/qr', doctor, { class_id: ids.off1 });
@@ -205,29 +216,35 @@ async function call(base, method, apiPath, token, body) {
     assert(studentGet.status === 403, 'student cannot fetch the doctor QR session');
 
     const legacy = await call(base, 'GET', `/attendance/sessions/${created.session_id}/token`, doctor);
-    assert(legacy.status === 200 && legacy.data.token && legacy.data.token !== created.qr_token, 'legacy short token still issues');
-    const legacyScan = await call(base, 'POST', '/attendance/scan', student, { session_id: created.session_id, token: legacy.data.token });
-    assert(legacyScan.status === 200 && legacyScan.data.status === 'present', 'legacy token still records attendance');
+    assert(legacy.status === 200 && legacy.data.token === created.qr_token, 'token route returns the current stored code');
+    const forged = jwt.sign({ sid: created.session_id }, (await db.query('SELECT qr_secret FROM attendance_sessions WHERE id = ?', [created.session_id]))[0][0].qr_secret, { expiresIn: 20 });
+    const forgedScan = await call(base, 'POST', '/attendance/scan', student, scanBody(created.session_id, forged));
+    assert(forgedScan.status === 400 && forgedScan.data.error === 'QR_EXPIRED', 'a signed token that is not the current code is rejected');
 
-    const storedScan = await call(base, 'POST', '/attendance/scan', student, { session_id: created.session_id, token: created.qr_token });
-    assert(storedScan.status === 409 && storedScan.data.error === 'ALREADY_RECORDED', 'stored QR token is accepted by the student scan');
+    const storedScan = await call(base, 'POST', '/attendance/scan', student, scanBody(created.session_id, created.qr_token));
+    assert(storedScan.status === 200 && storedScan.data.status === 'present', 'current QR token records attendance');
+
+    const againScan = await call(base, 'POST', '/attendance/scan', student, scanBody(created.session_id, created.qr_token, { device_id: 'other-device' }));
+    assert(againScan.status === 409 && againScan.data.error === 'ALREADY_RECORDED', 'the same student cannot scan twice');
 
     const outsiderScan = await call(base, 'POST', '/attendance/scan', outsider, { session_id: created.session_id, token: created.qr_token });
     assert(outsiderScan.status === 403 && outsiderScan.data.error === 'NOT_ENROLLED', 'unenrolled student cannot use the QR token');
 
     const refreshed = await call(base, 'POST', `/attendance/sessions/${created.session_id}/qr/refresh`, doctor);
     assert(refreshed.status === 201 && refreshed.data.qr_token && refreshed.data.qr_token !== created.qr_token, 'refresh issues a new token');
-    assert(refreshed.data.expires_in <= QR_TTL_SECONDS && refreshed.data.expires_in >= QR_TTL_SECONDS - 5, 'refreshed code expires in 15 minutes');
+    assert(refreshed.data.expires_in <= QR_TTL_SECONDS && refreshed.data.expires_in >= QR_TTL_SECONDS - 5, 'refreshed code expires in 20 seconds');
 
-    const stale = await call(base, 'POST', '/attendance/scan', student, { session_id: created.session_id, token: created.qr_token });
+    const stale = await call(base, 'POST', '/attendance/scan', student, scanBody(created.session_id, created.qr_token));
     assert(stale.status === 400 && stale.data.error === 'QR_EXPIRED', 'refreshed-away token is rejected');
-    const fresh = await call(base, 'POST', '/attendance/scan', student, { session_id: created.session_id, token: refreshed.data.qr_token });
+    const fresh = await call(base, 'POST', '/attendance/scan', student, scanBody(created.session_id, refreshed.data.qr_token));
     assert(fresh.status === 409 && fresh.data.error === 'ALREADY_RECORDED', 'refreshed token still matches the scan format');
 
     const studentRefresh = await call(base, 'POST', `/attendance/sessions/${created.session_id}/qr/refresh`, student);
     assert(studentRefresh.status === 403, 'student cannot refresh a QR session');
 
-    const second = await call(base, 'POST', '/attendance/qr', doctor, { class_id: ids.off2 });
+    const second = await call(base, 'POST', '/attendance/qr', doctor, {
+      class_id: ids.off2, latitude: 30, longitude: 31, accuracy: 5, radius_m: 20,
+    });
     assert(second.status === 201 && second.data.qr_token !== refreshed.data.qr_token, 'a second class gets its own token');
     const [[counts]] = await db.query(
       'SELECT COUNT(*) AS n, COUNT(DISTINCT qr_token) AS distinct_tokens FROM qr_attendance_sessions WHERE doctor_id = ?',
@@ -250,8 +267,30 @@ async function call(base, method, apiPath, token, body) {
     const afterClose = await call(base, 'POST', `/attendance/sessions/${created.session_id}/qr/refresh`, doctor);
     assert(afterClose.status === 400 && afterClose.data.error === 'SESSION_CLOSED', 'closed session cannot regenerate a QR');
 
-    const presentScan = await call(base, 'POST', '/attendance/scan', student, { session_id: second.data.session_id, token: second.data.qr_token });
-    assert(presentScan.status === 200 && presentScan.data.status === 'present', 'a fresh stored QR records present');
+    const far = await call(base, 'POST', '/attendance/scan', student, scanBody(second.data.session_id, second.data.qr_token, {
+      latitude: 30.001, longitude: 31, accuracy: 8,
+    }));
+    assert(far.status === 400 && far.data.error === 'TOO_FAR', `a far scan is rejected (${far.data && far.data.error})`);
+    const poor = await call(base, 'POST', '/attendance/scan', student, scanBody(second.data.session_id, second.data.qr_token, {
+      latitude: 30, longitude: 31, accuracy: 90,
+    }));
+    assert(poor.status === 400 && poor.data.error === 'GPS_INACCURATE', 'a poor GPS fix is rejected');
+    const presentScan = await call(base, 'POST', '/attendance/scan', student, scanBody(second.data.session_id, second.data.qr_token, {
+      latitude: 30.00005, longitude: 31, accuracy: 10, device_id: 'room-device',
+    }));
+    assert(presentScan.status === 200 && presentScan.data.status === 'present', 'a nearby scan records present');
+
+    ids.secondStudent = await insertUser(`qr2${stamp}`, 'student');
+    await db.query(
+      'INSERT INTO students (user_id, student_code, department_id, level, admission_year) VALUES (?,?,?,?,?)',
+      [ids.secondStudent, `qr2${stamp}`, ids.dept, 1, 2026]
+    );
+    await db.query('INSERT INTO enrollments (student_id, offering_id) VALUES (?,?)', [ids.secondStudent, ids.off2]);
+    const student2 = signAccessToken({ id: ids.secondStudent, role: 'student', token_version: 0 });
+    const blocked = await call(base, 'POST', '/attendance/scan', student2, scanBody(second.data.session_id, second.data.qr_token, {
+      latitude: 30, longitude: 31, accuracy: 8, device_id: 'room-device',
+    }));
+    assert(blocked.status === 409 && blocked.data.error === 'DEVICE_ALREADY_USED', 'a second student cannot use the same device in this session');
 
     console.log('QR attendance tests passed');
   } finally {
@@ -263,8 +302,11 @@ async function call(base, method, apiPath, token, body) {
     }
     if (ids.course) await db.query('DELETE FROM courses WHERE id = ?', [ids.course]);
     if (ids.semester) await db.query('DELETE FROM semesters WHERE id = ?', [ids.semester]);
-    const userIds = [ids.doctor, ids.other, ids.student, ids.outsider].filter(Boolean);
+    const userIds = [ids.doctor, ids.other, ids.student, ids.outsider, ids.secondStudent].filter(Boolean);
     if (userIds.length) {
+      await db.query(`DELETE FROM notifications WHERE user_id IN (${userIds.map(() => '?').join(',')})`, userIds);
+      await db.query(`DELETE FROM notification_dedup WHERE user_id IN (${userIds.map(() => '?').join(',')})`, userIds).catch(() => {});
+      await db.query(`DELETE FROM activity_log WHERE actor_id IN (${userIds.map(() => '?').join(',')})`, userIds).catch(() => {});
       await db.query(`DELETE FROM instructors WHERE user_id IN (${userIds.map(() => '?').join(',')})`, userIds);
       await db.query(`DELETE FROM students WHERE user_id IN (${userIds.map(() => '?').join(',')})`, userIds);
       await db.query(`DELETE FROM users WHERE id IN (${userIds.map(() => '?').join(',')})`, userIds);
